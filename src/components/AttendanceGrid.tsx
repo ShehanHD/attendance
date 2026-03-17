@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -69,17 +69,22 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
     month
   )
 
+  const isDirtyRef = useRef(false)
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+  }, [isDirty])
+
   // When fetched data arrives, populate entries (with defaults if empty)
+  // Guard against background revalidation overwriting unsaved user edits.
   useEffect(() => {
     if (fetched === undefined) return
+    if (isDirtyRef.current) return  // preserve user edits during background revalidation
     if (fetched.length > 0) {
       setEntries(fetched)
     } else {
       setEntries(buildDefaultEntries(employee, month, year, closures))
     }
-    setIsDirty(false)
-    onDirtyChange(false)
-  }, [fetched]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetched, employee, month, year, closures]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const markDirty = useCallback(() => {
     if (!isDirty) {
@@ -149,6 +154,13 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
 
   const daysInMonth = new Date(year, month, 0).getDate()
   const summary = computeSummary(entries)
+
+  const isFutureMonth = (() => {
+    const n = new Date()
+    const cy = n.getFullYear()
+    const cm = n.getMonth() + 1
+    return year > cy || (year === cy && month > cm)
+  })()
 
   if (isLoading) {
     return <p className='text-muted-foreground p-4'>Loading…</p>
@@ -257,7 +269,7 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
       </div>
 
       {/* No entries message for future month */}
-      {entries.length === 0 && (
+      {entries.length === 0 && isFutureMonth && (
         <p className='text-muted-foreground text-sm'>No entries yet for this month.</p>
       )}
 
