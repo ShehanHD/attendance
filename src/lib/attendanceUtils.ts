@@ -53,7 +53,7 @@ export function isDisabledDay(
 
   // Easter Monday
   const easter = getEasterDate(year)
-  const easterMonday = new Date(easter.getTime() + 86_400_000)
+  const easterMonday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1)
   if (
     easterMonday.getFullYear() === year &&
     easterMonday.getMonth() + 1 === month &&
