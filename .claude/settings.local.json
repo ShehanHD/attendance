@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(printf \"y\\\\n\")",
+      "Bash(npx create-vite@latest . --template react-ts)",
+      "Bash(npx:*)",
+      "Bash(cmd.exe /c \"dir C:\\\\Users\\\\Don\\\\AppData\\\\Local\\\\Temp\\\\attendance-scaffold\" 2>&1)",
+      "Bash(cmd.exe /c \"dir C:\\\\Users\\\\Don\\\\Documents\\\\attendance\\\\C\" 2>&1)",
+      "Bash(cp:*)",
+      "Bash(npm install:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''version''''\\), d.get\\(''''bin'''', {}\\)\\)\")",
+      "Bash(node:*)",
+      "Bash(./node_modules/.bin/tailwindcss init:*)"
+    ]
+  }
+}
