@@ -155,12 +155,7 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
   const daysInMonth = new Date(year, month, 0).getDate()
   const summary = computeSummary(entries)
 
-  const isFutureMonth = (() => {
-    const n = new Date()
-    const cy = n.getFullYear()
-    const cm = n.getMonth() + 1
-    return year > cy || (year === cy && month > cm)
-  })()
+  const isFutureMonth = year > currentYear || (year === currentYear && month > now.getMonth() + 1)
 
   if (isLoading) {
     return <p className='text-muted-foreground p-4'>Loading…</p>
