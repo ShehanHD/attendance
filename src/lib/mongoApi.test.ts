@@ -8,7 +8,7 @@ import {
 } from './mongoApi'
 import type { Employee, CompanyClosure, AttendanceEntry } from './schemas'
 
-const mockEmployee: Employee = { _id: 'e1', name: 'Alice', standardHours: 8, isAdmin: false }
+const mockEmployee: Employee = { _id: 'e1', name: 'Alice', standardHours: 8, isAdmin: false, isActive: true }
 const mockClosure: CompanyClosure = { _id: 'c1', date: '2026-01-01', note: null }
 const mockEntry: AttendanceEntry = {
   _id: 'en1',

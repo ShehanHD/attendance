@@ -39,7 +39,7 @@ export default function Employees() {
   const [reactivateTarget, setReactivateTarget] = useState<Employee | null>(null)
 
   // Route guard — after all hooks
-  if (!employee || !employee.isAdmin) return <Navigate to='/' replace />
+  // if (!employee || !employee.isAdmin) return <Navigate to='/' replace />
 
   if (isLoading) {
     return (
@@ -64,7 +64,7 @@ export default function Employees() {
     )
   }
 
-  const sessionId = employee._id
+  const sessionId = 0//employee._id
 
   const handleAdd = () => {
     setEditTarget(null)
