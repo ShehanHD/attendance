@@ -64,7 +64,7 @@ export default function Employees() {
     )
   }
 
-  const sessionId = 0//employee._id
+  const sessionId = "0"//employee._id
 
   const handleAdd = () => {
     setEditTarget(null)
