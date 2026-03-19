@@ -1,16 +1,9 @@
-import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import {useState} from 'react'
+import {useNavigate} from 'react-router-dom'
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '@/components/ui/table'
+import {Badge} from '@/components/ui/badge'
+import {Button} from '@/components/ui/button'
+import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,14 +14,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useEmployees } from '@/hooks/useEmployees'
-import { useUpdateEmployee } from '@/hooks/useEmployeeMutations'
+import {useEmployees} from '@/hooks/useEmployees'
+import {useUpdateEmployee} from '@/hooks/useEmployeeMutations'
 import EmployeeModal from '@/components/EmployeeModal'
-import { getSessionEmployee } from '@/lib/session'
-import type { Employee } from '@/lib/schemas'
+import type {Employee} from '@/lib/schemas'
 
 export default function Employees() {
-  const employee = getSessionEmployee()
+  // const employee = getSessionEmployee()
   const navigate = useNavigate()
   const { data: employees, isLoading, isError, refetch } = useEmployees()
   const { mutate: updateEmployee, isPending: updatePending } = useUpdateEmployee()
