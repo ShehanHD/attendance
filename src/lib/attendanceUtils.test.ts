@@ -14,6 +14,7 @@ const employee: Employee = {
   name: 'Mario Rossi',
   standardHours: 8,
   isAdmin: false,
+  isActive: true,
 }
 
 // --- getEasterDate ---
