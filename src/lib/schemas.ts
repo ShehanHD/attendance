@@ -3,8 +3,9 @@ import { z } from 'zod'
 export const EmployeeSchema = z.object({
   _id: z.string(),
   name: z.string(),
-  standardHours: z.number().positive(),
+  standardHours: z.number().int().positive(),
   isAdmin: z.boolean(),
+  isActive: z.boolean().default(true),
 })
 
 export const AttendanceEntryTypeSchema = z.enum([
