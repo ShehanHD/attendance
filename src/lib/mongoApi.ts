@@ -31,6 +31,36 @@ export async function fetchEmployees(): Promise<Employee[]> {
   return result.employees
 }
 
+export async function createEmployee(data: {
+  name: string
+  standardHours: number
+  isAdmin: boolean
+}): Promise<Employee> {
+  const result = await apiFetch(
+    '/api/employees',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    },
+    z.object({ employee: EmployeeSchema })
+  )
+  return result.employee
+}
+
+export async function updateEmployee(data: Employee): Promise<Employee> {
+  const result = await apiFetch(
+    '/api/employees',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    },
+    z.object({ employee: EmployeeSchema })
+  )
+  return result.employee
+}
+
 // ── Company Closures ─────────────────────────────────────────────────────────
 
 export async function fetchClosures(): Promise<CompanyClosure[]> {
