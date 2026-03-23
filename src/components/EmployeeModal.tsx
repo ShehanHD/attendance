@@ -28,6 +28,7 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
   const [name, setName] = useState('')
   const [standardHours, setStandardHours] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [hasTickets, setHasTickets] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createPending || updatePending
@@ -38,6 +39,7 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
       setName(employee?.name ?? '')
       setStandardHours(employee ? String(employee.standardHours) : '')
       setIsAdmin(employee?.isAdmin ?? false)
+      setHasTickets(employee?.hasTickets ?? true)
       setError(null)
     }
   }, [open, employee])
@@ -57,7 +59,7 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
 
     if (isEdit && employee) {
       update(
-        { ...employee, name: name.trim(), standardHours: hours, isAdmin },
+        { ...employee, name: name.trim(), standardHours: hours, isAdmin, hasTickets },
         {
           onSuccess: (updated) => {
             if (updated._id === getSessionEmployee()?._id) {
@@ -69,7 +71,7 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
       )
     } else {
       create(
-        { name: name.trim(), standardHours: hours, isAdmin },
+        { name: name.trim(), standardHours: hours, isAdmin, hasTickets },
         { onSuccess: () => onClose() }
       )
     }
@@ -114,6 +116,16 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
                 onChange={(e) => setIsAdmin(e.target.checked)}
               />
               <Label htmlFor='emp-admin'>Admin</Label>
+            </div>
+            <div className='flex items-center gap-2'>
+              <input
+                id='emp-tickets'
+                type='checkbox'
+                className='h-4 w-4 rounded border-input'
+                checked={hasTickets}
+                onChange={(e) => setHasTickets(e.target.checked)}
+              />
+              <Label htmlFor='emp-tickets'>Has Tickets</Label>
             </div>
             {error && <p className='text-sm text-destructive'>{error}</p>}
           </div>

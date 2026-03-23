@@ -35,6 +35,7 @@ export async function createEmployee(data: {
   name: string
   standardHours: number
   isAdmin: boolean
+  hasTickets: boolean
 }): Promise<Employee> {
   const result = await apiFetch(
     '/api/employees',
@@ -70,6 +71,27 @@ export async function fetchClosures(): Promise<CompanyClosure[]> {
     z.object({ closures: z.array(CompanyClosureSchema) })
   )
   return result.closures
+}
+
+export async function createClosure(data: { date: string; endDate?: string; note: string | null }): Promise<CompanyClosure> {
+  const result = await apiFetch(
+    '/api/closures',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    },
+    z.object({ closure: CompanyClosureSchema })
+  )
+  return result.closure
+}
+
+export async function deleteClosure(id: string): Promise<void> {
+  const res = await fetch(`/api/closures?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
 }
 
 // ── Attendance Entries ────────────────────────────────────────────────────────

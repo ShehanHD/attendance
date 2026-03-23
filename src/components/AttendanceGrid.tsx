@@ -25,6 +25,7 @@ import {
   buildDefaultEntries,
   computeSummary,
   isDisabledDay,
+  getHolidayLabel,
 } from '@/lib/attendanceUtils'
 import { useAttendanceEntries, useSaveAttendance } from '@/hooks/useAttendance'
 import type { AttendanceEntry, CompanyClosure, Employee } from '@/lib/schemas'
@@ -82,7 +83,12 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
     if (fetched.length > 0) {
       setEntries(fetched)
     } else {
-      setEntries(buildDefaultEntries(employee, month, year, closures))
+      const defaults = buildDefaultEntries(employee, month, year, closures)
+      setEntries(defaults)
+      // Auto-persist defaults to DB on first open
+      saveAttendance(employee._id, year, month, defaults)
+        .then(fresh => setEntries(fresh))
+        .catch(() => {}) // silently ignore; UI still shows defaults
     }
   }, [fetched, employee, month, year, closures]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -246,24 +252,29 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
               const entry = entries.find(e => e.date === iso)
 
               if (disabled) {
+                const label = getHolidayLabel(year, month, day, closures)
                 return (
-                  <div key={`${wi}-${di}`} className='px-1 py-1 text-center bg-muted/40 min-h-[3rem]'>
+                  <div key={`${wi}-${di}`} className='px-1 py-1.5 text-center bg-muted/40 min-h-[4.5rem]'>
                     <div className='text-xs text-muted-foreground/60 font-medium'>{day}</div>
-                    <div className='text-muted-foreground text-xs'>—</div>
+                    {label && (
+                      <div className='text-muted-foreground/70 text-xs leading-tight truncate px-0.5' title={label}>
+                        {label}
+                      </div>
+                    )}
                   </div>
                 )
               }
 
               return (
-                <div key={`${wi}-${di}`} className='px-1 py-1 text-center min-h-[3rem]'>
-                  <div className='text-xs text-muted-foreground font-medium mb-0.5'>{day}</div>
+                <div key={`${wi}-${di}`} className='px-1 py-1.5 text-center min-h-[4.5rem]'>
+                  <div className='text-xs text-muted-foreground font-medium mb-1'>{day}</div>
                   {entry ? (
                     <CellEditor entry={entry} onSave={handleCellSave}>
                       <button
-                        className={`w-full rounded px-1 py-0.5 text-xs font-medium ${TYPE_COLORS[entry.type]} hover:opacity-80`}
+                        className={`w-full rounded-lg px-1.5 py-1.5 text-sm font-semibold ${TYPE_COLORS[entry.type]} hover:opacity-80`}
                       >
                         {entry.type.slice(0, 3).toUpperCase()}
-                        {entry.hours > 0 && <span className='ml-0.5 opacity-70'>·{entry.hours}h</span>}
+                        {entry.hours > 0 && <span className='ml-1 opacity-70'>·{entry.hours}h</span>}
                       </button>
                     </CellEditor>
                   ) : (

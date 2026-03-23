@@ -6,6 +6,7 @@ export const EmployeeSchema = z.object({
   standardHours: z.number().int().positive(),
   isAdmin: z.boolean(),
   isActive: z.boolean().default(true),
+  hasTickets: z.boolean().default(true),
 })
 
 export const AttendanceEntryTypeSchema = z.enum([
@@ -30,6 +31,7 @@ export const AttendanceEntrySchema = z.object({
 export const CompanyClosureSchema = z.object({
   _id: z.string(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   note: z.string().nullable(),
 })
 

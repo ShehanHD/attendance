@@ -43,22 +43,27 @@ export default function Home() {
   }
 
   return (
-    <div className='flex min-h-screen items-center justify-center bg-background'>
-      <div className='flex flex-col gap-6 rounded-lg border bg-card p-8 shadow-sm'>
-        <h1 className='text-2xl font-semibold'>Attendance</h1>
-        <p className='text-muted-foreground'>Select your name to continue.</p>
+    <div className='flex min-h-screen items-center justify-center bg-gray-50'>
+      <div className='flex flex-col gap-5 rounded-2xl border-0 bg-white p-8 shadow-lg w-80'>
+        <div>
+          <h1 className='text-2xl font-bold'>Attendance</h1>
+          <p className='text-sm text-muted-foreground mt-1'>Select your name to continue.</p>
+        </div>
 
-        {employees && employees.length === 0 ? (
-          <p className='text-muted-foreground'>No employee records found.</p>
-        ) : (
-          <EmployeeSelector
-            employees={employees ?? []}
-            value={selectedId}
-            onChange={setSelectedId}
-          />
-        )}
+        <div className='flex flex-col gap-1.5'>
+          <label className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>Employee</label>
+          {employees && employees.length === 0 ? (
+            <p className='text-muted-foreground text-sm'>No employee records found.</p>
+          ) : (
+            <EmployeeSelector
+              employees={employees ?? []}
+              value={selectedId}
+              onChange={setSelectedId}
+            />
+          )}
+        </div>
 
-        <Button onClick={handleContinue} disabled={!selectedId}>
+        <Button onClick={handleContinue} disabled={!selectedId} className='w-full h-11'>
           Continue
         </Button>
       </div>

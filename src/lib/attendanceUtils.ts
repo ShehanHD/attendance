@@ -1,19 +1,20 @@
 import type { AttendanceEntry, CompanyClosure, Employee } from './schemas'
 
-// Fixed Italian national holidays (month 1-indexed).
+// Fixed Italian national holidays + Milan patron saint (month 1-indexed, all years).
 // Easter Sunday is always a Sunday (disabled as weekend).
 // Easter Monday is computed dynamically via getEasterDate().
-const ITALIAN_PUBLIC_HOLIDAYS: { month: number; day: number }[] = [
-  { month: 1, day: 1 },   // Capodanno
-  { month: 1, day: 6 },   // Epifania
-  { month: 4, day: 25 },  // Festa della Liberazione
-  { month: 5, day: 1 },   // Festa dei Lavoratori
-  { month: 6, day: 2 },   // Festa della Repubblica
-  { month: 8, day: 15 },  // Ferragosto
-  { month: 11, day: 1 },  // Ognissanti
-  { month: 12, day: 8 },  // Immacolata Concezione
-  { month: 12, day: 25 }, // Natale
-  { month: 12, day: 26 }, // Santo Stefano
+const ITALIAN_PUBLIC_HOLIDAYS: { month: number; day: number; name: string }[] = [
+  { month: 1,  day: 1,  name: 'Capodanno' },
+  { month: 1,  day: 6,  name: 'Epifania' },
+  { month: 4,  day: 25, name: 'Festa della Liberazione' },
+  { month: 5,  day: 1,  name: 'Festa dei Lavoratori' },
+  { month: 6,  day: 2,  name: 'Festa della Repubblica' },
+  { month: 8,  day: 15, name: 'Ferragosto' },
+  { month: 11, day: 1,  name: 'Ognissanti' },
+  { month: 12, day: 7,  name: "Sant'Ambrogio" },   // Milan
+  { month: 12, day: 8,  name: 'Immacolata Concezione' },
+  { month: 12, day: 25, name: 'Natale' },
+  { month: 12, day: 26, name: 'Santo Stefano' },
 ]
 
 // Easter Sunday for the given year using the Anonymous Gregorian algorithm.
@@ -51,6 +52,7 @@ export function isDisabledDay(
 
   if (ITALIAN_PUBLIC_HOLIDAYS.some(h => h.month === month && h.day === day)) return true
 
+
   // Easter Monday
   const easter = getEasterDate(year)
   const easterMonday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1)
@@ -61,9 +63,38 @@ export function isDisabledDay(
   ) return true
 
   const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  if (closures.some(c => c.date === iso)) return true
+  if (closures.some(c => iso >= c.date && iso <= (c.endDate ?? c.date))) return true
 
   return false
+}
+
+// Returns the display name for a disabled day (holiday/closure), or null for weekends.
+export function getHolidayLabel(
+  year: number,
+  month: number,
+  day: number,
+  closures: CompanyClosure[]
+): string | null {
+  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+  // Custom company closure takes priority (has user-defined note)
+  const closure = closures.find(c => iso >= c.date && iso <= (c.endDate ?? c.date))
+  if (closure?.note) return closure.note
+
+  // Hardcoded national + Milan holidays
+  const holiday = ITALIAN_PUBLIC_HOLIDAYS.find(h => h.month === month && h.day === day)
+  if (holiday) return holiday.name
+
+  // Easter Monday
+  const easter = getEasterDate(year)
+  const easterMonday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1)
+  if (
+    easterMonday.getFullYear() === year &&
+    easterMonday.getMonth() + 1 === month &&
+    easterMonday.getDate() === day
+  ) return 'Pasquetta'
+
+  return null
 }
 
 // Generates present-default entries for all non-disabled working days in the month.

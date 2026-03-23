@@ -7,6 +7,7 @@ const PostBodySchema = z.object({
   name: z.string().min(1),
   standardHours: z.number().int().positive(),
   isAdmin: z.boolean(),
+  hasTickets: z.boolean().default(true),
 })
 
 const PutBodySchema = z.object({
@@ -15,6 +16,7 @@ const PutBodySchema = z.object({
   standardHours: z.number().int().positive(),
   isAdmin: z.boolean(),
   isActive: z.boolean(),
+  hasTickets: z.boolean().default(true),
 })
 
 export default async function handler(
@@ -49,18 +51,19 @@ async function handlePost(req: VercelRequest, res: VercelResponse): Promise<void
     res.status(400).json({ error: parsed.error.issues[0].message })
     return
   }
-  const { name, standardHours, isAdmin } = parsed.data
+  const { name, standardHours, isAdmin, hasTickets } = parsed.data
   try {
     const db = await getDb()
     const result = await db
       .collection('employees')
-      .insertOne({ name, standardHours, isAdmin, isActive: true })
+      .insertOne({ name, standardHours, isAdmin, isActive: true, hasTickets })
     const employee = {
       _id: result.insertedId.toString(),
       name,
       standardHours,
       isAdmin,
       isActive: true,
+      hasTickets,
     }
     res.status(201).json({ employee })
   } catch {

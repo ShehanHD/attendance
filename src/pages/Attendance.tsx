@@ -59,17 +59,22 @@ export default function Attendance() {
   }
 
   return (
-    <div className='min-h-screen bg-background'>
-      <header className='border-b px-6 py-4 flex items-center justify-between'>
+    <div className='min-h-screen bg-gray-50'>
+      <header className='bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm'>
         <div>
           <h1 className='text-xl font-semibold'>Attendance</h1>
           <p className='text-sm text-muted-foreground'>{employee.name}</p>
         </div>
         <div className='flex gap-2'>
           {employee.isAdmin && (
-            <Button variant='outline' onClick={handleSummaryClick}>
-              View Summary
-            </Button>
+            <>
+              <Button variant='outline' onClick={handleSummaryClick}>
+                View Summary
+              </Button>
+              <Button variant='outline' onClick={() => navigate('/employees')}>
+                Settings
+              </Button>
+            </>
           )}
           <Button variant='ghost' onClick={handleHomeClick}>
             Change employee
@@ -78,11 +83,13 @@ export default function Attendance() {
       </header>
 
       <main className='p-6'>
+        <div className='bg-white rounded-2xl shadow-sm p-6'>
         <AttendanceGrid
           employee={employee}
           closures={closures ?? []}
           onDirtyChange={setIsDirty}
         />
+        </div>
       </main>
 
       {/* Guard: navigate to Summary */}

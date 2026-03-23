@@ -58,7 +58,7 @@ export default function CellEditor({ entry, onSave, children }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className='w-56 space-y-3'>
+      <PopoverContent className='w-64 space-y-4 p-5'>
         <div className='space-y-1'>
           <Label>Type</Label>
           <Select
@@ -103,7 +103,7 @@ export default function CellEditor({ entry, onSave, children }: Props) {
           </div>
         )}
 
-        <Button size='sm' className='w-full' onClick={handleSave}>
+        <Button className='w-full' onClick={handleSave}>
           Apply
         </Button>
       </PopoverContent>
