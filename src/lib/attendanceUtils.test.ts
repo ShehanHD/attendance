@@ -1,15 +1,10 @@
-import { describe, it, expect } from 'vitest'
-import {
-  getEasterDate,
-  isDisabledDay,
-  buildDefaultEntries,
-  computeSummary,
-} from './attendanceUtils'
-import type { Employee, CompanyClosure } from './schemas'
+import {describe, expect, it} from 'vitest'
+import {buildDefaultEntries, computeSummary, getEasterDate, isDisabledDay,} from './attendanceUtils'
+import type {CompanyClosure} from './schemas'
 
 const noClosures: CompanyClosure[] = []
 
-const employee: Employee = {
+const employee: { _id: string; name: string; standardHours: number; isAdmin: boolean; isActive: boolean } = {
   _id: 'emp1',
   name: 'Mario Rossi',
   standardHours: 8,

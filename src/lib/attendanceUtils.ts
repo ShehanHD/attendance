@@ -1,4 +1,4 @@
-import type { AttendanceEntry, CompanyClosure, Employee } from './schemas'
+import type {AttendanceEntry, CompanyClosure} from './schemas'
 
 // Fixed Italian national holidays + Milan patron saint (month 1-indexed, all years).
 // Easter Sunday is always a Sunday (disabled as weekend).
@@ -102,10 +102,10 @@ export function getHolidayLabel(
 // Each entry uses: type="present", hours=employee.standardHours,
 // sickRef=null, _id=crypto.randomUUID() (temporary, replaced after save).
 export function buildDefaultEntries(
-  employee: Employee,
-  month: number,
-  year: number,
-  closures: CompanyClosure[]
+    employee: { _id: string; name: string; standardHours: number; isAdmin: boolean; isActive: boolean },
+    month: number,
+    year: number,
+    closures: CompanyClosure[]
 ): AttendanceEntry[] {
   const daysInMonth = new Date(year, month, 0).getDate()
 
