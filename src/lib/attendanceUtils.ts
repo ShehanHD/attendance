@@ -66,9 +66,8 @@ export function isDisabledDay(
   return false
 }
 
-// Generates present-default entries for non-disabled working days.
-// Past/current month: caps at today.
-// Future months: returns [] (caller shows "No entries yet" message).
+// Generates present-default entries for all non-disabled working days in the month.
+// Covers past, current, and future months — the whole year is pre-filled as present.
 // Each entry uses: type="present", hours=employee.standardHours,
 // sickRef=null, _id=crypto.randomUUID() (temporary, replaced after save).
 export function buildDefaultEntries(
@@ -77,22 +76,11 @@ export function buildDefaultEntries(
   year: number,
   closures: CompanyClosure[]
 ): AttendanceEntry[] {
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
-
-  const isFuture =
-    year > currentYear || (year === currentYear && month > currentMonth)
-
-  if (isFuture) return []
-
   const daysInMonth = new Date(year, month, 0).getDate()
-  const isCurrentMonth = year === currentYear && month === currentMonth
-  const capDay = isCurrentMonth ? now.getDate() : daysInMonth
 
   const entries: AttendanceEntry[] = []
 
-  for (let day = 1; day <= capDay; day++) {
+  for (let day = 1; day <= daysInMonth; day++) {
     if (isDisabledDay(year, month, day, closures)) continue
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     entries.push({

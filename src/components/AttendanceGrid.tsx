@@ -149,13 +149,30 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
       })
     } finally {
       setIsSaving(false)
+
     }
   }
 
   const daysInMonth = new Date(year, month, 0).getDate()
-  const summary = computeSummary(entries)
 
-  const isFutureMonth = year > currentYear || (year === currentYear && month > now.getMonth() + 1)
+  // Build weeks: Mon-first, pad start/end with null
+  const weeks: (number | null)[][] = (() => {
+    const firstDow = new Date(year, month - 1, 1).getDay()
+    const offset = (firstDow + 6) % 7 // 0=Mon … 6=Sun
+    const result: (number | null)[][] = []
+    let week: (number | null)[] = Array(offset).fill(null)
+    for (let day = 1; day <= daysInMonth; day++) {
+      week.push(day)
+      if (week.length === 7) { result.push(week); week = [] }
+    }
+    if (week.length > 0) {
+      while (week.length < 7) week.push(null)
+      result.push(week)
+    }
+    return result
+  })()
+
+  const summary = computeSummary(entries)
 
   if (isLoading) {
     return <p className='text-muted-foreground p-4'>Loading…</p>
@@ -207,46 +224,40 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
         {isDirty && <Badge variant='outline' className='text-orange-600 border-orange-400'>Unsaved changes</Badge>}
       </div>
 
-      {/* Grid */}
-      <div className='overflow-x-auto rounded-md border'>
-        <table className='min-w-full text-sm'>
-          <thead className='bg-muted'>
-            <tr>
-              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                const disabled = isDisabledDay(year, month, day, closures)
+      {/* Grid — weeks as rows, Mon–Sun as columns */}
+      <div className='rounded-md border'>
+        <div className='grid grid-cols-7 text-sm'>
+          {/* Day-of-week header */}
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+            <div key={d} className='bg-muted px-2 py-1 text-center text-xs font-medium text-muted-foreground'>
+              {d}
+            </div>
+          ))}
+
+          {/* Week rows */}
+          {weeks.flatMap((week, wi) =>
+            week.map((day, di) => {
+              if (day === null) {
+                return <div key={`${wi}-${di}`} className='bg-muted/20 min-h-[3rem]' />
+              }
+
+              const disabled = isDisabledDay(year, month, day, closures)
+              const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              const entry = entries.find(e => e.date === iso)
+
+              if (disabled) {
                 return (
-                  <th
-                    key={day}
-                    className={`px-2 py-1 text-center font-medium ${disabled ? 'text-muted-foreground' : ''}`}
-                  >
-                    {day}
-                  </th>
+                  <div key={`${wi}-${di}`} className='px-1 py-1 text-center bg-muted/40 min-h-[3rem]'>
+                    <div className='text-xs text-muted-foreground/60 font-medium'>{day}</div>
+                    <div className='text-muted-foreground text-xs'>—</div>
+                  </div>
                 )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                const disabled = isDisabledDay(year, month, day, closures)
-                const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                const entry = entries.find(e => e.date === iso)
+              }
 
-                if (disabled) {
-                  return (
-                    <td key={day} className='px-2 py-2 text-center bg-muted/40 text-muted-foreground'>
-                      —
-                    </td>
-                  )
-                }
-
-                if (!entry) {
-                  // Future month with no entries
-                  return <td key={day} className='px-2 py-2 text-center text-muted-foreground'>·</td>
-                }
-
-                return (
-                  <td key={day} className='px-1 py-1 text-center'>
+              return (
+                <div key={`${wi}-${di}`} className='px-1 py-1 text-center min-h-[3rem]'>
+                  <div className='text-xs text-muted-foreground font-medium mb-0.5'>{day}</div>
+                  {entry ? (
                     <CellEditor entry={entry} onSave={handleCellSave}>
                       <button
                         className={`w-full rounded px-1 py-0.5 text-xs font-medium ${TYPE_COLORS[entry.type]} hover:opacity-80`}
@@ -255,18 +266,15 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
                         {entry.hours > 0 && <span className='ml-0.5 opacity-70'>·{entry.hours}h</span>}
                       </button>
                     </CellEditor>
-                  </td>
-                )
-              })}
-            </tr>
-          </tbody>
-        </table>
+                  ) : (
+                    <div className='text-muted-foreground text-xs'>·</div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
       </div>
-
-      {/* No entries message for future month */}
-      {entries.length === 0 && isFutureMonth && (
-        <p className='text-muted-foreground text-sm'>No entries yet for this month.</p>
-      )}
 
       {/* Summary */}
       <div className='flex gap-6 text-sm'>
