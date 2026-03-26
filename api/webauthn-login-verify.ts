@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const verification = await verifyAuthenticationResponse({
       response: response as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
       expectedChallenge: challengeDoc.challenge as string,
-      expectedOrigin: process.env.WEBAUTHN_ORIGIN ?? 'http://localhost:5173',
+      expectedOrigin: process.env.WEBAUTHN_ORIGIN ?? 'http://localhost:3000',
       expectedRPID: process.env.WEBAUTHN_RP_ID ?? 'localhost',
       credential: {
         id: credential.credentialId as string,
