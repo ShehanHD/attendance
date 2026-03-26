@@ -42,14 +42,14 @@ export default function CellEditor({ entry, onSave, children }: Props) {
     setSickRef(entry.sickRef ?? '')
   }, [entry])
 
-  const showHours = type !== 'vacation' && type !== 'sick'
+  const showHours = type === 'absent'
   const showSickRef = type === 'sick'
 
   const handleSave = () => {
     onSave({
       ...entry,
       type,
-      hours: showHours ? Number(hours) : 0,
+      hours: type === 'present' ? 8 : showHours ? Number(hours) : 0,
       sickRef: showSickRef ? sickRef.trim() || null : null,
     })
     setOpen(false)
@@ -63,7 +63,11 @@ export default function CellEditor({ entry, onSave, children }: Props) {
           <Label>Type</Label>
           <Select
             value={type}
-            onValueChange={v => setType(v as AttendanceEntryType)}
+            onValueChange={v => {
+              const t = v as AttendanceEntryType
+              setType(t)
+              if (t === 'absent') setHours('7')
+            }}
           >
             <SelectTrigger>
               <SelectValue />
@@ -83,8 +87,8 @@ export default function CellEditor({ entry, onSave, children }: Props) {
             <Label>Hours</Label>
             <Input
               type='number'
-              min={0}
-              max={24}
+              min={1}
+              max={7}
               step={0.5}
               value={hours}
               onChange={e => setHours(e.target.value)}

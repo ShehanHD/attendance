@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { ObjectId } from 'mongodb'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
+import { requireAuth } from './_auth.js'
 
 const PostBodySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
@@ -13,11 +14,16 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<void> {
+  const auth = await requireAuth(req, res)
+  if (!auth) return
+
   if (req.method === 'GET') {
     await handleGet(res)
   } else if (req.method === 'POST') {
+    if (!auth.isAdmin) { res.status(403).json({ error: 'Admin access required' }); return }
     await handlePost(req, res)
   } else if (req.method === 'DELETE') {
+    if (!auth.isAdmin) { res.status(403).json({ error: 'Admin access required' }); return }
     await handleDelete(req, res)
   } else {
     res.status(405).json({ error: 'Method not allowed' })

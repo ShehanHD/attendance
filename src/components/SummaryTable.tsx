@@ -29,6 +29,7 @@ export default function SummaryTable({ employees, allEntries }: Props) {
         <TableRow>
           <TableHead>Employee</TableHead>
           <TableHead className='text-right'>Hours Worked</TableHead>
+          <TableHead className='text-right'>Absent Hours</TableHead>
           <TableHead className='text-right'>Vacation Days</TableHead>
           <TableHead className='text-right'>Sick Days</TableHead>
           <TableHead>Sick Refs</TableHead>
@@ -43,7 +44,7 @@ export default function SummaryTable({ employees, allEntries }: Props) {
             return (
               <TableRow key={emp._id}>
                 <TableCell className='font-medium'>{emp.name}</TableCell>
-                <TableCell colSpan={5} className='text-muted-foreground text-sm'>
+                <TableCell colSpan={6} className='text-muted-foreground text-sm'>
                   No entries for this month
                 </TableCell>
               </TableRow>
@@ -59,6 +60,7 @@ export default function SummaryTable({ employees, allEntries }: Props) {
             <TableRow key={emp._id}>
               <TableCell className='font-medium'>{emp.name}</TableCell>
               <TableCell className='text-right'>{s.hoursWorked}h</TableCell>
+              <TableCell className='text-right'>{s.absentHours > 0 ? `${s.absentHours}h` : '—'}</TableCell>
               <TableCell className='text-right'>{s.vacationDays}</TableCell>
               <TableCell className='text-right'>{s.sickDays}</TableCell>
               <TableCell>

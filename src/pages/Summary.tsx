@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useQuery } from '@tanstack/react-query'
 import { useEmployees } from '@/hooks/useEmployees'
+import { useAuth } from '@/contexts/AuthContext'
 import SummaryTable from '@/components/SummaryTable'
 import { fetchAllEntriesForMonth } from '@/lib/mongoApi'
-import { getSessionEmployee } from '@/lib/session'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -21,7 +21,7 @@ const MONTHS = [
 ]
 
 export default function Summary() {
-  const employee = getSessionEmployee()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   const now = new Date()
@@ -41,11 +41,11 @@ export default function Summary() {
   } = useQuery({
     queryKey: ['summary-entries', year, month],
     queryFn: () => fetchAllEntriesForMonth(year, month),
-    enabled: employee !== null && employee.isAdmin === true,
+    enabled: user !== null && user.isAdmin === true,
   })
 
   // Route guards — AFTER all hooks
-  if (!employee || !employee.isAdmin) return <Navigate to='/' replace />
+  if (!user || !user.isAdmin) return <Navigate to='/' replace />
 
   const isLoading = empLoading || entriesLoading
   const isError = empError || entriesError
@@ -73,15 +73,14 @@ export default function Summary() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <header className='border-b px-6 py-4 flex items-center justify-between'>
-        <h1 className='text-xl font-semibold'>Summary — {employee.name}</h1>
+      <header className='border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3'>
+        <h1 className='text-lg sm:text-xl font-semibold'>Summary</h1>
         <Button variant='outline' onClick={() => navigate('/attendance')}>
-          My Attendance
+          Back
         </Button>
       </header>
 
-      <main className='p-6 space-y-4'>
-        {/* Month / Year selectors */}
+      <main className='p-4 sm:p-6 space-y-4'>
         <div className='flex gap-3'>
           <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
             <SelectTrigger className='w-36'>
@@ -106,7 +105,9 @@ export default function Summary() {
           </Select>
         </div>
 
-        <SummaryTable employees={employees ?? []} allEntries={allEntries ?? []} />
+        <div className='overflow-x-auto rounded-lg border'>
+          <SummaryTable employees={employees ?? []} allEntries={allEntries ?? []} />
+        </div>
       </main>
     </div>
   )

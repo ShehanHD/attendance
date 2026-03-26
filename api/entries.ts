@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
+import { requireAuth } from './_auth.js'
 
 const GetQuerySchema = z.object({
   year: z.string().regex(/^\d{4}$/, 'year must be a 4-digit number'),
@@ -19,16 +20,19 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<void> {
+  const auth = await requireAuth(req, res)
+  if (!auth) return
+
   if (req.method === 'GET') {
-    await handleGet(req, res)
+    await handleGet(req, res, auth)
   } else if (req.method === 'POST') {
-    await handlePost(req, res)
+    await handlePost(req, res, auth)
   } else {
     res.status(405).json({ error: 'Method not allowed' })
   }
 }
 
-async function handleGet(req: VercelRequest, res: VercelResponse): Promise<void> {
+async function handleGet(req: VercelRequest, res: VercelResponse, auth: { employeeId: string; isAdmin: boolean }): Promise<void> {
   const parsed = GetQuerySchema.safeParse(req.query)
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message })
@@ -38,7 +42,12 @@ async function handleGet(req: VercelRequest, res: VercelResponse): Promise<void>
   const { employeeId, year, month } = parsed.data
   const prefix = `${year}-${month.padStart(2, '0')}`
   const filter: Record<string, unknown> = { date: { $regex: `^${prefix}` } }
-  if (employeeId) filter['employeeId'] = employeeId
+  // Non-admins can only see their own entries
+  if (!auth.isAdmin) {
+    filter['employeeId'] = auth.employeeId
+  } else if (employeeId) {
+    filter['employeeId'] = employeeId
+  }
 
   try {
     const db = await getDb()
@@ -50,7 +59,7 @@ async function handleGet(req: VercelRequest, res: VercelResponse): Promise<void>
   }
 }
 
-async function handlePost(req: VercelRequest, res: VercelResponse): Promise<void> {
+async function handlePost(req: VercelRequest, res: VercelResponse, auth: { employeeId: string; isAdmin: boolean }): Promise<void> {
   const parsed = PostBodySchema.safeParse(req.body)
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message })
@@ -58,6 +67,12 @@ async function handlePost(req: VercelRequest, res: VercelResponse): Promise<void
   }
 
   const { employeeId, year, month, entries } = parsed.data
+
+  // Non-admins can only save their own entries
+  if (!auth.isAdmin && employeeId !== auth.employeeId) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
   const prefix = `${year}-${String(month).padStart(2, '0')}`
 
   try {

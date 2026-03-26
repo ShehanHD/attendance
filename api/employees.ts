@@ -1,13 +1,17 @@
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 import { ObjectId } from 'mongodb'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
+import { requireAuth } from './_auth.js'
 
 const PostBodySchema = z.object({
   name: z.string().min(1),
   standardHours: z.number().int().positive(),
   isAdmin: z.boolean(),
   hasTickets: z.boolean().default(true),
+  email: z.string().email().optional(),
+  password: z.string().min(8).optional(),
 })
 
 const PutBodySchema = z.object({
@@ -23,11 +27,16 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<void> {
+  const auth = await requireAuth(req, res)
+  if (!auth) return
+
   if (req.method === 'GET') {
     await handleGet(res)
   } else if (req.method === 'POST') {
+    if (!auth.isAdmin) { res.status(403).json({ error: 'Admin access required' }); return }
     await handlePost(req, res)
   } else if (req.method === 'PUT') {
+    if (!auth.isAdmin) { res.status(403).json({ error: 'Admin access required' }); return }
     await handlePut(req, res)
   } else {
     res.status(405).json({ error: 'Method not allowed' })
@@ -51,22 +60,27 @@ async function handlePost(req: VercelRequest, res: VercelResponse): Promise<void
     res.status(400).json({ error: parsed.error.issues[0].message })
     return
   }
-  const { name, standardHours, isAdmin, hasTickets } = parsed.data
+  const { name, standardHours, isAdmin, hasTickets, email, password } = parsed.data
+  if (email && !password) {
+    res.status(400).json({ error: 'Password is required when email is provided' })
+    return
+  }
   try {
     const db = await getDb()
-    const result = await db
-      .collection('employees')
-      .insertOne({ name, standardHours, isAdmin, isActive: true, hasTickets })
-    const employee = {
-      _id: result.insertedId.toString(),
-      name,
-      standardHours,
-      isAdmin,
-      isActive: true,
-      hasTickets,
+    const doc: Record<string, unknown> = { name, standardHours, isAdmin, isActive: true, hasTickets }
+    if (email && password) {
+      doc.email = email.toLowerCase()
+      doc.passwordHash = await bcrypt.hash(password, 12)
+      doc.mustChangePassword = true
     }
+    const result = await db.collection('employees').insertOne(doc)
+    const employee = { _id: result.insertedId.toString(), name, standardHours, isAdmin, isActive: true, hasTickets }
     res.status(201).json({ employee })
-  } catch {
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && err.code === 11000) {
+      res.status(409).json({ error: 'Email already in use' })
+      return
+    }
     res.status(500).json({ error: 'Internal server error' })
   }
 }

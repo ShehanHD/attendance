@@ -37,8 +37,19 @@ export function getEasterDate(year: number): Date {
   return new Date(year, month - 1, day)
 }
 
-// Returns true if the day is a weekend, Italian public holiday
-// (including Easter Monday), or a company closure.
+// Returns true if the day falls within a company closure range.
+export function isCompanyClosure(
+  year: number,
+  month: number,
+  day: number,
+  closures: CompanyClosure[]
+): boolean {
+  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return closures.some(c => iso >= c.date && iso <= (c.endDate ?? c.date))
+}
+
+// Returns true if the day is a weekend or Italian public holiday (including Easter Monday).
+// Company closures are NOT considered disabled — they default to vacation and remain editable.
 export function isDisabledDay(
   year: number,
   month: number,
@@ -52,7 +63,6 @@ export function isDisabledDay(
 
   if (ITALIAN_PUBLIC_HOLIDAYS.some(h => h.month === month && h.day === day)) return true
 
-
   // Easter Monday
   const easter = getEasterDate(year)
   const easterMonday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1)
@@ -61,9 +71,6 @@ export function isDisabledDay(
     easterMonday.getMonth() + 1 === month &&
     easterMonday.getDate() === day
   ) return true
-
-  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  if (closures.some(c => iso >= c.date && iso <= (c.endDate ?? c.date))) return true
 
   return false
 }
@@ -114,12 +121,14 @@ export function buildDefaultEntries(
   for (let day = 1; day <= daysInMonth; day++) {
     if (isDisabledDay(year, month, day, closures)) continue
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    // Company closure days default to vacation but remain editable
+    const isClosure = isCompanyClosure(year, month, day, closures)
     entries.push({
       _id: crypto.randomUUID(),
       employeeId: employee._id,
       date: iso,
-      type: 'present',
-      hours: employee.standardHours,
+      type: isClosure ? 'vacation' : 'present',
+      hours: isClosure ? 0 : employee.standardHours,
       sickRef: null,
     })
   }
@@ -130,11 +139,13 @@ export function buildDefaultEntries(
 // Computes monthly totals from a set of entries.
 export function computeSummary(entries: AttendanceEntry[]): {
   hoursWorked: number
+  absentHours: number
   vacationDays: number
   sickDays: number
   tickets: number
 } {
   let hoursWorked = 0
+  let absentHours = 0
   let vacationDays = 0
   let sickDays = 0
   let tickets = 0
@@ -143,10 +154,11 @@ export function computeSummary(entries: AttendanceEntry[]): {
     if (entry.type === 'present' || entry.type === 'absent') {
       hoursWorked += entry.hours
     }
+    if (entry.type === 'absent') absentHours += entry.hours
     if (entry.type === 'vacation') vacationDays++
     if (entry.type === 'sick') sickDays++
     if (entry.type === 'present') tickets++
   }
 
-  return { hoursWorked, vacationDays, sickDays, tickets }
+  return { hoursWorked, absentHours, vacationDays, sickDays, tickets }
 }

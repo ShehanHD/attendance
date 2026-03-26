@@ -10,8 +10,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useCreateEmployee, useUpdateEmployee } from '@/hooks/useEmployeeMutations'
-import { getSessionEmployee, setSessionEmployee } from '@/lib/session'
 import type { Employee } from '@/lib/schemas'
 
 interface Props {
@@ -29,6 +29,8 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
   const [standardHours, setStandardHours] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [hasTickets, setHasTickets] = useState(true)
+  const [email, setEmail] = useState('')
+  const [defaultPassword, setDefaultPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createPending || updatePending
@@ -40,6 +42,8 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
       setStandardHours(employee ? String(employee.standardHours) : '')
       setIsAdmin(employee?.isAdmin ?? false)
       setHasTickets(employee?.hasTickets ?? true)
+      setEmail('')
+      setDefaultPassword('')
       setError(null)
     }
   }, [open, employee])
@@ -60,20 +64,13 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
     if (isEdit && employee) {
       update(
         { ...employee, name: name.trim(), standardHours: hours, isAdmin, hasTickets },
-        {
-          onSuccess: (updated) => {
-            if (updated._id === getSessionEmployee()?._id) {
-              setSessionEmployee(updated)
-            }
-            onClose()
-          },
-        }
-      )
-    } else {
-      create(
-        { name: name.trim(), standardHours: hours, isAdmin, hasTickets },
         { onSuccess: () => onClose() }
       )
+    } else {
+      const payload: Parameters<typeof create>[0] = { name: name.trim(), standardHours: hours, isAdmin, hasTickets }
+      if (email.trim()) payload.email = email.trim()
+      if (defaultPassword) payload.password = defaultPassword
+      create(payload, { onSuccess: () => onClose() })
     }
   }
 
@@ -118,15 +115,42 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
               <Label htmlFor='emp-admin'>Admin</Label>
             </div>
             <div className='flex items-center gap-2'>
-              <input
+              <Switch
                 id='emp-tickets'
-                type='checkbox'
-                className='h-4 w-4 rounded border-input'
                 checked={hasTickets}
-                onChange={(e) => setHasTickets(e.target.checked)}
+                onCheckedChange={setHasTickets}
               />
               <Label htmlFor='emp-tickets'>Has Tickets</Label>
             </div>
+            {!isEdit && (
+              <>
+                <div className='space-y-1'>
+                  <Label htmlFor='emp-email'>Email <span className='text-muted-foreground font-normal'>(optional)</span></Label>
+                  <Input
+                    id='emp-email'
+                    type='email'
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder='employee@company.com'
+                    autoComplete='off'
+                  />
+                </div>
+                {email.trim() && (
+                  <div className='space-y-1'>
+                    <Label htmlFor='emp-password'>Default Password</Label>
+                    <Input
+                      id='emp-password'
+                      type='password'
+                      value={defaultPassword}
+                      onChange={e => setDefaultPassword(e.target.value)}
+                      placeholder='Min. 8 characters'
+                      autoComplete='new-password'
+                    />
+                    <p className='text-xs text-muted-foreground'>Employee will be asked to change this on first login.</p>
+                  </div>
+                )}
+              </>
+            )}
             {error && <p className='text-sm text-destructive'>{error}</p>}
           </div>
           <DialogFooter className='mt-4'>

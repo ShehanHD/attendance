@@ -35,7 +35,21 @@ export const CompanyClosureSchema = z.object({
   note: z.string().nullable(),
 })
 
+// Authenticated user returned by /api/auth — no passwordHash exposed
+export const AuthUserSchema = EmployeeSchema.extend({
+  email: z.string().email().nullable(),
+  mustChangePassword: z.boolean().default(false),
+})
+
+export const BiometricDeviceSchema = z.object({
+  _id: z.string(),
+  deviceName: z.string(),
+  createdAt: z.string(),
+})
+
 export type Employee = z.infer<typeof EmployeeSchema>
+export type AuthUser = z.infer<typeof AuthUserSchema>
 export type AttendanceEntryType = z.infer<typeof AttendanceEntryTypeSchema>
 export type AttendanceEntry = z.infer<typeof AttendanceEntrySchema>
 export type CompanyClosure = z.infer<typeof CompanyClosureSchema>
+export type BiometricDevice = z.infer<typeof BiometricDeviceSchema>

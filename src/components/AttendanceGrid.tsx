@@ -27,7 +27,23 @@ import {
   isDisabledDay,
   getHolidayLabel,
 } from '@/lib/attendanceUtils'
+
+const CELL_LABELS: Record<string, string> = {
+  present: 'PRE',
+  absent: 'ABS',
+  vacation: 'VAC',
+  sick: 'SIC',
+}
+
+const CELL_TEXT_COLORS: Record<string, string> = {
+  present: 'text-green-600',
+  absent: 'text-orange-500',
+  vacation: 'text-blue-500',
+  sick: 'text-red-500',
+}
 import { useAttendanceEntries, useSaveAttendance } from '@/hooks/useAttendance'
+import { initYear } from '@/lib/mongoApi'
+import { useAuth } from '@/contexts/AuthContext'
 import type { AttendanceEntry, CompanyClosure, Employee } from '@/lib/schemas'
 
 interface Props {
@@ -41,16 +57,35 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-const TYPE_COLORS: Record<string, string> = {
-  present: 'bg-green-100 text-green-800',
-  absent: 'bg-orange-100 text-orange-800',
-  vacation: 'bg-blue-100 text-blue-800',
-  sick: 'bg-red-100 text-red-800',
+const DOT_COLORS: Record<string, string> = {
+  present: 'bg-green-500',
+  absent: 'bg-orange-400',
+  vacation: 'bg-blue-500',
+  sick: 'bg-red-500',
 }
 
+const DOT_LABELS: Record<string, string> = {
+  present: 'Present',
+  absent: 'Absent',
+  vacation: 'Vacation',
+  sick: 'Sick',
+}
+
+const DAY_HEADERS = [
+  { full: 'Mon', short: 'M' },
+  { full: 'Tue', short: 'T' },
+  { full: 'Wed', short: 'W' },
+  { full: 'Thu', short: 'T' },
+  { full: 'Fri', short: 'F' },
+  { full: 'Sat', short: 'S' },
+  { full: 'Sun', short: 'S' },
+]
+
 export default function AttendanceGrid({ employee, closures, onDirtyChange }: Props) {
+  const { user } = useAuth()
   const now = new Date()
   const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
   const YEARS = [currentYear - 1, currentYear, currentYear + 1]
 
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -59,10 +94,13 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Pending navigation: { month, year } or null
   const [pendingNav, setPendingNav] = useState<{ month: number; year: number } | null>(null)
 
   const saveAttendance = useSaveAttendance()
+
+  // Non-admins cannot edit past months — only the current month and future
+  const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth)
+  const isReadOnly = !user?.isAdmin && isPastMonth
 
   const { data: fetched, isLoading, isError, refetch } = useAttendanceEntries(
     employee._id,
@@ -75,20 +113,33 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
     isDirtyRef.current = isDirty
   }, [isDirty])
 
-  // When fetched data arrives, populate entries (with defaults if empty)
-  // Guard against background revalidation overwriting unsaved user edits.
   useEffect(() => {
     if (fetched === undefined) return
-    if (isDirtyRef.current) return  // preserve user edits during background revalidation
+    if (isDirtyRef.current) return
     if (fetched.length > 0) {
       setEntries(fetched)
     } else {
+      // Show current month defaults immediately (no loading flash)
       const defaults = buildDefaultEntries(employee, month, year, closures)
       setEntries(defaults)
-      // Auto-persist defaults to DB on first open
-      saveAttendance(employee._id, year, month, defaults)
-        .then(fresh => setEntries(fresh))
-        .catch(() => {}) // silently ignore; UI still shows defaults
+
+      // Initialize all 12 months for this employee-year in one request.
+      // Months that already have entries are skipped server-side (idempotent).
+      const allMonths = Array.from({ length: 12 }, (_, i) => ({
+        month: i + 1,
+        entries: buildDefaultEntries(employee, i + 1, year, closures),
+      }))
+      initYear(employee._id, year, allMonths)
+        .then(({ initialized }) => {
+          // Refetch current month to get server-assigned _ids
+          if (initialized.includes(month)) refetch()
+        })
+        .catch(() => {
+          // Fall back: save only the current month the old way
+          saveAttendance(employee._id, year, month, defaults)
+            .then(fresh => setEntries(fresh))
+            .catch(() => {})
+        })
     }
   }, [fetched, employee, month, year, closures]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -125,7 +176,6 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
   const cancelDiscard = () => setPendingNav(null)
 
   const handleSave = async () => {
-    // Pre-save validation
     const missingSickRef = entries.some(
       e => e.type === 'sick' && (!e.sickRef || e.sickRef.trim() === '')
     )
@@ -136,7 +186,6 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
       return
     }
 
-    // Safety assertion
     if (entries.some(e => e.employeeId !== employee._id)) {
       toast.error('Data error', { description: 'Entry mismatch detected.' })
       return
@@ -155,16 +204,14 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
       })
     } finally {
       setIsSaving(false)
-
     }
   }
 
   const daysInMonth = new Date(year, month, 0).getDate()
 
-  // Build weeks: Mon-first, pad start/end with null
   const weeks: (number | null)[][] = (() => {
     const firstDow = new Date(year, month - 1, 1).getDay()
-    const offset = (firstDow + 6) % 7 // 0=Mon … 6=Sun
+    const offset = (firstDow + 6) % 7
     const result: (number | null)[][] = []
     let week: (number | null)[] = Array(offset).fill(null)
     for (let day = 1; day <= daysInMonth; day++) {
@@ -198,7 +245,7 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
   return (
     <div className='space-y-4'>
       {/* Month / Year selectors */}
-      <div className='flex gap-3 items-center flex-wrap'>
+      <div className='flex gap-2 items-center flex-wrap'>
         <Select
           value={String(month)}
           onValueChange={v => navigateTo(Number(v), year)}
@@ -228,15 +275,17 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
         </Select>
 
         {isDirty && <Badge variant='outline' className='text-orange-600 border-orange-400'>Unsaved changes</Badge>}
+        {isReadOnly && <Badge variant='outline' className='text-muted-foreground'>Read-only</Badge>}
       </div>
 
       {/* Grid — weeks as rows, Mon–Sun as columns */}
-      <div className='rounded-md border'>
-        <div className='grid grid-cols-7 text-sm'>
+      <div className='rounded-md border overflow-hidden'>
+        <div className='grid grid-cols-7'>
           {/* Day-of-week header */}
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-            <div key={d} className='bg-muted px-2 py-1 text-center text-xs font-medium text-muted-foreground'>
-              {d}
+          {DAY_HEADERS.map(d => (
+            <div key={d.full} className='bg-muted py-2 text-center font-medium text-muted-foreground'>
+              <span className='hidden sm:inline text-xs'>{d.full}</span>
+              <span className='sm:hidden text-xs'>{d.short}</span>
             </div>
           ))}
 
@@ -244,7 +293,7 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
           {weeks.flatMap((week, wi) =>
             week.map((day, di) => {
               if (day === null) {
-                return <div key={`${wi}-${di}`} className='bg-muted/20 min-h-[3rem]' />
+                return <div key={`${wi}-${di}`} className='bg-muted/20 min-h-[2.75rem]' />
               }
 
               const disabled = isDisabledDay(year, month, day, closures)
@@ -254,31 +303,47 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
               if (disabled) {
                 const label = getHolidayLabel(year, month, day, closures)
                 return (
-                  <div key={`${wi}-${di}`} className='px-1 py-1.5 text-center bg-muted/40 min-h-[4.5rem]'>
-                    <div className='text-xs text-muted-foreground/60 font-medium'>{day}</div>
+                  <div key={`${wi}-${di}`} className='flex flex-col items-center pt-1.5 bg-muted/40 min-h-[2.75rem]'>
+                    <div className='text-[10px] text-muted-foreground/60 font-medium leading-none'>{day}</div>
                     {label && (
-                      <div className='text-muted-foreground/70 text-xs leading-tight truncate px-0.5' title={label}>
-                        {label}
-                      </div>
+                      <div className='mt-1.5 w-2 h-2 rounded-full bg-muted-foreground/25' title={label} />
                     )}
                   </div>
                 )
               }
 
+              const cellContent = entry ? (
+                <span
+                  className='mt-0.5 flex items-center justify-center w-full h-8 px-0.5'
+                  title={`${DOT_LABELS[entry.type]}${entry.type !== 'present' && entry.hours > 0 ? ` · ${entry.hours}h` : ''}`}
+                >
+                  <span className={`sm:hidden w-3 h-3 rounded-full flex-shrink-0 ${DOT_COLORS[entry.type]}`} />
+                  <span className={`hidden sm:flex flex-col items-center leading-none ${CELL_TEXT_COLORS[entry.type]}`}>
+                    <span className='text-[9px] font-bold tracking-wide'>{CELL_LABELS[entry.type]}</span>
+                    {entry.type !== 'present' && entry.hours > 0 && <span className='text-[8px] text-muted-foreground mt-0.5'>{entry.hours}h</span>}
+                  </span>
+                </span>
+              ) : (
+                <div className='mt-0.5 w-8 h-8 flex items-center justify-center'>
+                  <span className='w-1.5 h-1.5 rounded-full bg-muted-foreground/20' />
+                </div>
+              )
+
               return (
-                <div key={`${wi}-${di}`} className='px-1 py-1.5 text-center min-h-[4.5rem]'>
-                  <div className='text-xs text-muted-foreground font-medium mb-1'>{day}</div>
-                  {entry ? (
+                <div key={`${wi}-${di}`} className='flex flex-col items-center pt-1.5 min-h-[2.75rem]'>
+                  <div className='text-[10px] text-muted-foreground font-medium leading-none'>{day}</div>
+                  {isReadOnly || !entry ? cellContent : (
                     <CellEditor entry={entry} onSave={handleCellSave}>
-                      <button
-                        className={`w-full rounded-lg px-1.5 py-1.5 text-sm font-semibold ${TYPE_COLORS[entry.type]} hover:opacity-80`}
-                      >
-                        {entry.type.slice(0, 3).toUpperCase()}
-                        {entry.hours > 0 && <span className='ml-1 opacity-70'>·{entry.hours}h</span>}
+                      <button className='mt-0.5 flex items-center justify-center w-full h-8 rounded hover:bg-muted/50 active:bg-muted/70 transition-colors px-0.5'>
+                        {/* Mobile: colored dot */}
+                        <span className={`sm:hidden w-3 h-3 rounded-full flex-shrink-0 ${DOT_COLORS[entry.type]}`} />
+                        {/* Desktop: text label */}
+                        <span className={`hidden sm:flex flex-col items-center leading-none ${CELL_TEXT_COLORS[entry.type]}`}>
+                          <span className='text-[9px] font-bold tracking-wide'>{CELL_LABELS[entry.type]}</span>
+                          {entry.type !== 'present' && entry.hours > 0 && <span className='text-[8px] text-muted-foreground mt-0.5'>{entry.hours}h</span>}
+                        </span>
                       </button>
                     </CellEditor>
-                  ) : (
-                    <div className='text-muted-foreground text-xs'>·</div>
                   )}
                 </div>
               )
@@ -287,8 +352,18 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
         </div>
       </div>
 
+      {/* Legend */}
+      <div className='flex gap-3 flex-wrap'>
+        {Object.entries(DOT_COLORS).map(([type, color]) => (
+          <span key={type} className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+            <span className={`w-2.5 h-2.5 rounded-full ${color} inline-block flex-shrink-0`} />
+            {DOT_LABELS[type]}
+          </span>
+        ))}
+      </div>
+
       {/* Summary */}
-      <div className='flex gap-6 text-sm'>
+      <div className='flex gap-4 text-sm flex-wrap'>
         <span><strong>{summary.hoursWorked}h</strong> worked</span>
         <span><strong>{summary.vacationDays}</strong> vacation</span>
         <span><strong>{summary.sickDays}</strong> sick</span>
@@ -296,9 +371,11 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
       </div>
 
       {/* Save */}
-      <Button onClick={handleSave} disabled={isSaving || !isDirty}>
-        {isSaving ? 'Saving…' : 'Save'}
-      </Button>
+      {!isReadOnly && (
+        <Button className='w-full sm:w-auto' onClick={handleSave} disabled={isSaving || !isDirty}>
+          {isSaving ? 'Saving…' : 'Save'}
+        </Button>
+      )}
 
       {/* Dirty navigation guard */}
       <AlertDialog open={pendingNav !== null}>
