@@ -54,8 +54,7 @@ export function isDisabledDay(
   year: number,
   month: number,
   day: number,
-  closures: CompanyClosure[]
-): boolean {
+  ): boolean {
   const date = new Date(year, month - 1, day)
   const dow = date.getDay() // 0 = Sunday, 6 = Saturday
 
@@ -119,7 +118,7 @@ export function buildDefaultEntries(
   const entries: AttendanceEntry[] = []
 
   for (let day = 1; day <= daysInMonth; day++) {
-    if (isDisabledDay(year, month, day, closures)) continue
+    if (isDisabledDay(year, month, day)) continue
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     // Company closure days default to vacation but remain editable
     const isClosure = isCompanyClosure(year, month, day, closures)

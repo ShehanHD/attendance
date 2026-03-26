@@ -33,40 +33,33 @@ describe('getEasterDate', () => {
 describe('isDisabledDay', () => {
   it('disables Saturday', () => {
     // 2026-03-07 is a Saturday
-    expect(isDisabledDay(2026, 3, 7, noClosures)).toBe(true)
+    expect(isDisabledDay(2026, 3, 7)).toBe(true)
   })
 
   it('disables Sunday', () => {
     // 2026-03-08 is a Sunday
-    expect(isDisabledDay(2026, 3, 8, noClosures)).toBe(true)
+    expect(isDisabledDay(2026, 3, 8)).toBe(true)
   })
 
   it('does not disable a regular Monday', () => {
     // 2026-03-09 is a Monday
-    expect(isDisabledDay(2026, 3, 9, noClosures)).toBe(false)
+    expect(isDisabledDay(2026, 3, 9)).toBe(false)
   })
 
   it('disables New Year (Jan 1)', () => {
-    expect(isDisabledDay(2026, 1, 1, noClosures)).toBe(true)
+    expect(isDisabledDay(2026, 1, 1)).toBe(true)
   })
 
   it('disables Ferragosto (Aug 15)', () => {
-    expect(isDisabledDay(2026, 8, 15, noClosures)).toBe(true)
+    expect(isDisabledDay(2026, 8, 15)).toBe(true)
   })
 
   it('disables Easter Monday 2025 (April 21)', () => {
-    expect(isDisabledDay(2025, 4, 21, noClosures)).toBe(true)
-  })
-
-  it('disables a company closure date', () => {
-    const closures: CompanyClosure[] = [
-      { _id: '1', date: '2026-03-10', note: null },
-    ]
-    expect(isDisabledDay(2026, 3, 10, closures)).toBe(true)
+    expect(isDisabledDay(2025, 4, 21)).toBe(true)
   })
 
   it('does not disable a regular working day with no closure', () => {
-    expect(isDisabledDay(2026, 3, 10, noClosures)).toBe(false)
+    expect(isDisabledDay(2026, 3, 10)).toBe(false)
   })
 })
 

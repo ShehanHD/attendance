@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {useNavigate, Navigate} from 'react-router-dom'
+import {Navigate, useNavigate} from 'react-router-dom'
 import {toast} from 'sonner'
 import {useAuth} from '@/contexts/AuthContext'
 import {setEmployeeCredentials} from '@/lib/mongoApi'
@@ -9,13 +9,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
 import {Alert, AlertDescription} from '@/components/ui/alert'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +20,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {Switch} from '@/components/ui/switch'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {useEmployees} from '@/hooks/useEmployees'

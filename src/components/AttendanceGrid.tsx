@@ -296,7 +296,7 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
                 return <div key={`${wi}-${di}`} className='bg-muted/20 min-h-[2.75rem]' />
               }
 
-              const disabled = isDisabledDay(year, month, day, closures)
+              const disabled = isDisabledDay(year, month, day)
               const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
               const entry = entries.find(e => e.date === iso)
 
