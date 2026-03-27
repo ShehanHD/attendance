@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -33,6 +33,7 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
   const [passwordGenerated, setPasswordGenerated] = useState(false)
   const [passwordCopied, setPasswordCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isPending = createPending || updatePending
   const isEdit = employee !== null
@@ -47,6 +48,12 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
       setPasswordGenerated(false)
       setPasswordCopied(false)
       setError(null)
+    } else {
+      // Clear pending copy timeout when modal closes
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+        copyTimeoutRef.current = null
+      }
     }
   }, [open, employee])
 
@@ -59,10 +66,14 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
     setPasswordCopied(false)
   }
 
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(defaultPassword)
-    setPasswordCopied(true)
-    setTimeout(() => setPasswordCopied(false), 2000)
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(defaultPassword)
+      setPasswordCopied(true)
+      copyTimeoutRef.current = setTimeout(() => setPasswordCopied(false), 2000)
+    } catch {
+      // clipboard denied — don't show "Copied!"
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
