@@ -36,7 +36,7 @@ vi.mock('xlsx', () => ({
   write: vi.fn().mockReturnValue(Buffer.from('fake-xlsx')),
 }))
 
-import handler from './send-summary'
+import handler from './send-summary.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function makeReq(overrides: Partial<VercelRequest> = {}): VercelRequest {
