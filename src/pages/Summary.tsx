@@ -14,6 +14,7 @@ import { useEmployees } from '@/hooks/useEmployees'
 import { useAuth } from '@/contexts/AuthContext'
 import SummaryTable from '@/components/SummaryTable'
 import { fetchAllEntriesForMonth } from '@/lib/mongoApi'
+import { exportSummaryToExcel } from '@/lib/exportUtils'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -75,9 +76,18 @@ export default function Summary() {
     <div className='min-h-screen bg-background'>
       <header className='border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3'>
         <h1 className='text-lg sm:text-xl font-semibold'>Summary</h1>
-        <Button variant='outline' onClick={() => navigate('/attendance')}>
-          Back
-        </Button>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            disabled={!allEntries || allEntries.length === 0}
+            onClick={() => exportSummaryToExcel(employees ?? [], allEntries ?? [], month, year)}
+          >
+            Download Excel
+          </Button>
+          <Button variant='outline' onClick={() => navigate('/attendance')}>
+            Back
+          </Button>
+        </div>
       </header>
 
       <main className='p-4 sm:p-6 space-y-4'>
