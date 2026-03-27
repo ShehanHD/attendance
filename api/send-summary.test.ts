@@ -125,6 +125,22 @@ describe('POST /api/send-summary', () => {
     expect(mail.html).toContain('March 2026')
     expect(mail.html).toContain('<table')
   })
+
+  it('email subject contains month name and year', async () => {
+    const res = makeRes()
+    await handler(makeReq(), res as unknown as VercelResponse)
+
+    const mail = mockSendMail.mock.calls[0][0]
+    expect(mail.subject).toBe('Attendance Summary — March 2026')
+    expect(mail.from).toBe('Test <test@test.com>')
+  })
+
+  it('returns 500 when sendMail throws', async () => {
+    mockSendMail.mockRejectedValueOnce(new Error('SMTP connection refused'))
+    const res = makeRes()
+    await handler(makeReq(), res as unknown as VercelResponse)
+    expect(res.status).toHaveBeenCalledWith(500)
+  })
 })
 
 describe('GET /api/send-summary (cron)', () => {

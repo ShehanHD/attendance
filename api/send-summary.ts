@@ -12,21 +12,24 @@ const BodySchema = z.object({
   month: z.number().int().min(1).max(12),
 })
 
+const EntryDocSchema = z.object({
+  employeeId: z.string(),
+  type: z.enum(['present', 'absent', 'vacation', 'sick']),
+  hours: z.number(),
+  sickRef: z.string().nullable(),
+})
+
+const EmployeeDocSchema = z.object({
+  _id: z.union([z.string(), z.any()]).transform(v => (typeof v === 'string' ? v : String(v))),
+  name: z.string(),
+  isAdmin: z.boolean(),
+  email: z.string().nullable().optional(),
+})
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface EntryDoc {
-  employeeId: string
-  type: 'present' | 'absent' | 'vacation' | 'sick'
-  hours: number
-  sickRef: string | null
-}
-
-interface EmployeeDoc {
-  _id: { toString(): string } | string
-  name: string
-  isAdmin: boolean
-  email?: string | null
-}
+type EntryDoc = z.infer<typeof EntryDocSchema>
+type EmployeeDoc = z.infer<typeof EmployeeDocSchema>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,12 +39,22 @@ const MONTH_NAMES = [
 ]
 
 function empId(emp: EmployeeDoc): string {
-  return typeof emp._id === 'string' ? emp._id : emp._id.toString()
+  return emp._id
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 function computeSummary(entries: EntryDoc[]) {
   let hoursWorked = 0, absentHours = 0, vacationDays = 0, sickDays = 0, tickets = 0
   for (const e of entries) {
+    // hoursWorked includes both present and absent hours (matches frontend computeSummary)
     if (e.type === 'present' || e.type === 'absent') hoursWorked += e.hours
     if (e.type === 'absent')   absentHours += e.hours
     if (e.type === 'vacation') vacationDays++
@@ -77,7 +90,7 @@ function buildXlsxBuffer(
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Summary')
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
+  return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Uint8Array)
 }
 
 function buildHtml(
@@ -91,7 +104,7 @@ function buildHtml(
   const rows = employees.map(emp => {
     const empEntries = entriesByEmployee.get(empId(emp)) ?? []
     if (empEntries.length === 0) {
-      return `<tr><td style="${tdStyle}">${emp.name}</td><td colspan="6" style="${tdStyle};color:#888">No entries</td></tr>`
+      return `<tr><td style="${tdStyle}">${escapeHtml(emp.name)}</td><td colspan="6" style="${tdStyle};color:#888">No entries</td></tr>`
     }
     const s = computeSummary(empEntries)
     const sickRefs = empEntries
@@ -101,12 +114,12 @@ function buildHtml(
       .map(e => e.sickRef)
       .join(', ')
     return `<tr>
-      <td style="${tdStyle}">${emp.name}</td>
+      <td style="${tdStyle}">${escapeHtml(emp.name)}</td>
       <td style="${tdStyle};text-align:right">${s.hoursWorked}h</td>
       <td style="${tdStyle};text-align:right">${s.absentHours > 0 ? `${s.absentHours}h` : '—'}</td>
       <td style="${tdStyle};text-align:right">${s.vacationDays}</td>
       <td style="${tdStyle};text-align:right">${s.sickDays}</td>
-      <td style="${tdStyle}">${sickRefs || '—'}</td>
+      <td style="${tdStyle}">${sickRefs ? escapeHtml(sickRefs) : '—'}</td>
       <td style="${tdStyle};text-align:right">${s.tickets}</td>
     </tr>`
   }).join('')
@@ -145,14 +158,17 @@ async function sendSummary(year: number, month: number, res: VercelResponse): Pr
   const db = await getDb()
   const monthStr = String(month).padStart(2, '0')
 
-  const [entryDocs, employeeDocs] = await Promise.all([
+  const [rawEntries, rawEmployees] = await Promise.all([
     db.collection('attendance_entries')
       .find({ date: { $regex: `^${year}-${monthStr}` } })
-      .toArray() as Promise<EntryDoc[]>,
+      .toArray(),
     db.collection('employees')
       .find({})
-      .toArray() as Promise<EmployeeDoc[]>,
+      .toArray(),
   ])
+
+  const entryDocs = z.array(EntryDocSchema).parse(rawEntries)
+  const employeeDocs = z.array(EmployeeDocSchema).parse(rawEmployees)
 
   const entriesByEmployee = new Map<string, EntryDoc[]>()
   for (const e of entryDocs) {
@@ -162,8 +178,8 @@ async function sendSummary(year: number, month: number, res: VercelResponse): Pr
   }
 
   const recipients = employeeDocs
-    .filter(e => e.isAdmin && e.email)
-    .map(e => e.email as string)
+    .filter((e): e is EmployeeDoc & { email: string } => e.isAdmin && e.email != null && e.email.length > 0)
+    .map(e => e.email)
 
   if (recipients.length === 0) {
     res.json({ sent: 0 })
@@ -179,6 +195,8 @@ async function sendSummary(year: number, month: number, res: VercelResponse): Pr
     port: Number(SMTP_PORT),
     secure: Number(SMTP_PORT) === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
   })
 
   await transporter.sendMail({
