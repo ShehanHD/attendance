@@ -55,11 +55,14 @@ export default function Summary() {
 
   async function handleSendEmail() {
     setIsSending(true)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30_000)
     try {
       const res = await fetch('/api/send-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year, month }),
+        signal: controller.signal,
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string }
@@ -75,6 +78,7 @@ export default function Summary() {
     } catch {
       toast.error('Failed to send summary email')
     } finally {
+      clearTimeout(timeoutId)
       setIsSending(false)
     }
   }
