@@ -167,9 +167,8 @@ export default function Employees() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Std. Hours</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Admin</TableHead>
-                    <TableHead>Tickets</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Login</TableHead>
                     <TableHead>Actions</TableHead>
@@ -182,11 +181,10 @@ export default function Employees() {
                     return (
                       <TableRow key={emp._id}>
                         <TableCell className={`font-medium ${cellClass}`}>{emp.name}</TableCell>
-                        <TableCell className={cellClass}>{emp.standardHours}h</TableCell>
-                        <TableCell className={cellClass}>{emp.isAdmin ? 'Yes' : '—'}</TableCell>
                         <TableCell className={cellClass}>
-                          {emp.hasTickets ? '✓' : '✗'}
+                          {emp.standardHours === 8 ? 'Full-Time' : emp.standardHours === 4 ? 'Part-Time' : `${emp.standardHours}h`}
                         </TableCell>
+                        <TableCell className={cellClass}>{emp.isAdmin ? 'Yes' : '—'}</TableCell>
                         <TableCell>
                           <Badge className={isInactive ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}>
                             {isInactive ? 'Inactive' : 'Active'}
