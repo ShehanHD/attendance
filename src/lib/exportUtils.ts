@@ -20,8 +20,10 @@ export function exportSummaryToExcel(
     if (empEntries.length === 0) return [emp.name, 0, 0, 0, 0, '', 0]
     const s = computeSummary(empEntries)
     const sickRefs = empEntries
-      .filter(e => e.type === 'sick' && e.sickRef && e.sickRef.trim() !== '')
-      .map(e => e.sickRef as string)
+      .filter((e): e is typeof e & { sickRef: string } =>
+        e.type === 'sick' && e.sickRef != null && e.sickRef.trim() !== ''
+      )
+      .map(e => e.sickRef)
       .join(', ')
     return [emp.name, s.hoursWorked, s.absentHours, s.vacationDays, s.sickDays, sickRefs, s.tickets]
   })
