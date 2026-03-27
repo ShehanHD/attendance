@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCreateEmployee, useUpdateEmployee } from '@/hooks/useEmployeeMutations'
 import type { Employee } from '@/lib/schemas'
 
@@ -26,11 +26,12 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
   const { mutate: update, isPending: updatePending } = useUpdateEmployee()
 
   const [name, setName] = useState('')
-  const [standardHours, setStandardHours] = useState('')
+  const [employmentType, setEmploymentType] = useState<'8' | '4'>('8')
   const [isAdmin, setIsAdmin] = useState(false)
-  const [hasTickets, setHasTickets] = useState(true)
   const [email, setEmail] = useState('')
   const [defaultPassword, setDefaultPassword] = useState('')
+  const [passwordGenerated, setPasswordGenerated] = useState(false)
+  const [passwordCopied, setPasswordCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createPending || updatePending
@@ -39,35 +40,49 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
   useEffect(() => {
     if (open) {
       setName(employee?.name ?? '')
-      setStandardHours(employee ? String(employee.standardHours) : '')
+      setEmploymentType(employee?.standardHours === 4 ? '4' : '8')
       setIsAdmin(employee?.isAdmin ?? false)
-      setHasTickets(employee?.hasTickets ?? true)
       setEmail('')
       setDefaultPassword('')
+      setPasswordGenerated(false)
+      setPasswordCopied(false)
       setError(null)
     }
   }, [open, employee])
 
+  const handleGeneratePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+    const bytes = crypto.getRandomValues(new Uint8Array(12))
+    const pwd = Array.from(bytes).map(b => chars[b % chars.length]).join('')
+    setDefaultPassword(pwd)
+    setPasswordGenerated(true)
+    setPasswordCopied(false)
+  }
+
+  const handleCopyPassword = () => {
+    navigator.clipboard.writeText(defaultPassword)
+    setPasswordCopied(true)
+    setTimeout(() => setPasswordCopied(false), 2000)
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const hours = Number(standardHours)
     if (!name.trim()) {
       setError('Name is required')
       return
     }
-    if (!Number.isInteger(hours) || hours <= 0) {
-      setError('Standard hours must be a positive whole number')
-      return
-    }
     setError(null)
+
+    const standardHours = Number(employmentType)
+    const hasTickets = employmentType === '8'
 
     if (isEdit && employee) {
       update(
-        { ...employee, name: name.trim(), standardHours: hours, isAdmin, hasTickets },
+        { ...employee, name: name.trim(), standardHours, isAdmin, hasTickets },
         { onSuccess: () => onClose() }
       )
     } else {
-      const payload: Parameters<typeof create>[0] = { name: name.trim(), standardHours: hours, isAdmin, hasTickets }
+      const payload: Parameters<typeof create>[0] = { name: name.trim(), standardHours, isAdmin, hasTickets }
       if (email.trim()) payload.email = email.trim()
       if (defaultPassword) payload.password = defaultPassword
       create(payload, { onSuccess: () => onClose() })
@@ -93,16 +108,16 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
               />
             </div>
             <div className='space-y-1'>
-              <Label htmlFor='emp-hours'>Standard Hours / Day</Label>
-              <Input
-                id='emp-hours'
-                type='number'
-                min={1}
-                step={1}
-                value={standardHours}
-                onChange={(e) => setStandardHours(e.target.value)}
-                placeholder='8'
-              />
+              <Label htmlFor='emp-type'>Employment Type</Label>
+              <Select value={employmentType} onValueChange={(v) => setEmploymentType(v as '8' | '4')}>
+                <SelectTrigger id='emp-type'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='8'>Full-Time (8 hours)</SelectItem>
+                  <SelectItem value='4'>Part-Time (4 hours)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className='flex items-center gap-2'>
               <input
@@ -113,14 +128,6 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
                 onChange={(e) => setIsAdmin(e.target.checked)}
               />
               <Label htmlFor='emp-admin'>Admin</Label>
-            </div>
-            <div className='flex items-center gap-2'>
-              <Switch
-                id='emp-tickets'
-                checked={hasTickets}
-                onCheckedChange={setHasTickets}
-              />
-              <Label htmlFor='emp-tickets'>Has Tickets</Label>
             </div>
             {!isEdit && (
               <>
@@ -137,15 +144,40 @@ export default function EmployeeModal({ open, onClose, employee }: Props) {
                 </div>
                 {email.trim() && (
                   <div className='space-y-1'>
-                    <Label htmlFor='emp-password'>Default Password</Label>
-                    <Input
-                      id='emp-password'
-                      type='password'
-                      value={defaultPassword}
-                      onChange={e => setDefaultPassword(e.target.value)}
-                      placeholder='Min. 8 characters'
-                      autoComplete='new-password'
-                    />
+                    <div className='flex items-center justify-between'>
+                      <Label htmlFor='emp-password'>Default Password</Label>
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant='ghost'
+                        className='h-auto py-0 text-xs text-muted-foreground hover:text-foreground'
+                        onClick={handleGeneratePassword}
+                      >
+                        Generate
+                      </Button>
+                    </div>
+                    <div className='flex gap-2'>
+                      <Input
+                        id='emp-password'
+                        type={passwordGenerated ? 'text' : 'password'}
+                        value={defaultPassword}
+                        onChange={e => { setDefaultPassword(e.target.value); setPasswordGenerated(false) }}
+                        placeholder='Min. 8 characters'
+                        autoComplete='new-password'
+                        className='font-mono'
+                      />
+                      {passwordGenerated && (
+                        <Button
+                          type='button'
+                          size='sm'
+                          variant='outline'
+                          className='shrink-0'
+                          onClick={handleCopyPassword}
+                        >
+                          {passwordCopied ? 'Copied!' : 'Copy'}
+                        </Button>
+                      )}
+                    </div>
                     <p className='text-xs text-muted-foreground'>Employee will be asked to change this on first login.</p>
                   </div>
                 )}
