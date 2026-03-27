@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ export default function Summary() {
 
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(currentYear)
+  const [isSending, setIsSending] = useState(false)
 
   const { data: employees, isLoading: empLoading, isError: empError } = useEmployees()
 
@@ -50,6 +52,32 @@ export default function Summary() {
 
   const isLoading = empLoading || entriesLoading
   const isError = empError || entriesError
+
+  async function handleSendEmail() {
+    setIsSending(true)
+    try {
+      const res = await fetch('/api/send-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        toast.error((data.error) ?? 'Failed to send summary email')
+        return
+      }
+      const data = await res.json() as { sent: number }
+      toast.success(
+        data.sent === 0
+          ? 'No admin recipients found'
+          : `Summary email sent to ${data.sent} admin${data.sent > 1 ? 's' : ''}`
+      )
+    } catch {
+      toast.error('Failed to send summary email')
+    } finally {
+      setIsSending(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -83,6 +111,13 @@ export default function Summary() {
             onClick={() => exportSummaryToExcel(employees ?? [], allEntries ?? [], month, year)}
           >
             Download Excel
+          </Button>
+          <Button
+            variant='outline'
+            disabled={isSending}
+            onClick={handleSendEmail}
+          >
+            {isSending ? 'Sending…' : 'Send Summary Email'}
           </Button>
           <Button variant='outline' onClick={() => navigate('/attendance')}>
             Back
