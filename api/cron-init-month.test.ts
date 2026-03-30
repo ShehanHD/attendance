@@ -37,16 +37,16 @@ function makeDb({
   existingCount = 0,
   insertMany = vi.fn().mockResolvedValue({}),
 } = {}) {
-  const countDocuments = vi.fn().mockResolvedValue(existingCount)
+  const distinct = vi.fn().mockResolvedValue(existingCount > 0 ? ['emp1'] : [])
   const collections: Record<string, unknown> = {
     employees: { find: () => ({ toArray: () => Promise.resolve(employees) }) },
     closures: { find: () => ({ toArray: () => Promise.resolve(closures) }) },
-    attendance_entries: { countDocuments, insertMany },
+    attendance_entries: { distinct, insertMany },
   }
   mockGetDb.mockResolvedValue({
     collection: (name: string) => collections[name],
   } as never)
-  return { countDocuments, insertMany }
+  return { distinct, insertMany }
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

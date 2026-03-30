@@ -2,6 +2,9 @@ import { ObjectId } from 'mongodb'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
 
+// Duplicated from src/lib/attendanceUtils.ts — api/ has a separate tsconfig
+// that excludes src/, so cross-directory imports are not possible.
+
 // Fixed Italian national holidays + Milan patron saint (month 1-indexed).
 const ITALIAN_PUBLIC_HOLIDAYS: { month: number; day: number }[] = [
   { month: 1,  day: 1  }, // Capodanno
@@ -46,12 +49,12 @@ function isDisabledDay(year: number, month: number, day: number): boolean {
   return false
 }
 
-interface Closure {
+interface ClosureRange {
   date: string
   endDate?: string
 }
 
-function isCompanyClosure(year: number, month: number, day: number, closures: Closure[]): boolean {
+function isCompanyClosure(year: number, month: number, day: number, closures: ClosureRange[]): boolean {
   const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   return closures.some(c => iso >= c.date && iso <= (c.endDate ?? c.date))
 }
@@ -71,7 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const now = new Date()
   const year = now.getUTCFullYear()
   const month = now.getUTCMonth() + 1
-  const prefix = `${year}-${String(month).padStart(2, '0')}-`
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+  const nextMonthStart = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`
 
   try {
     const db = await getDb()
@@ -79,12 +85,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const employees = await db
       .collection('employees')
       .find({ isActive: { $ne: false } })
-      .toArray() as Array<{ _id: { toString(): string }; standardHours: number }>
+      .toArray() as Array<{ _id: { toString(): string }; standardHours?: unknown }>
 
     const closures = await db
       .collection('closures')
       .find({})
-      .toArray() as Closure[]
+      .toArray() as ClosureRange[]
+
+    // Fetch all employee IDs with existing attendance entries for this month in a single query.
+    const existingIds = await db
+      .collection('attendance_entries')
+      .distinct('employeeId', { date: { $gte: monthStart, $lt: nextMonthStart } })
+    const existingSet = new Set(existingIds)
 
     let initialized = 0
     let skipped = 0
@@ -93,15 +105,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     for (const emp of employees) {
       const employeeId = emp._id.toString()
 
-      const existing = await db
-        .collection('attendance_entries')
-        .countDocuments({ employeeId, date: { $regex: `^${prefix}` } })
-
-      if (existing > 0) {
+      if (existingSet.has(employeeId)) {
         skipped++
         continue
       }
 
+      const hours = typeof emp.standardHours === 'number' ? emp.standardHours : 8
       const docs = []
       for (let day = 1; day <= daysInMonth; day++) {
         if (isDisabledDay(year, month, day)) continue
@@ -112,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           employeeId,
           date: iso,
           type: isClosure ? 'vacation' : 'present',
-          hours: isClosure ? 0 : emp.standardHours,
+          hours: isClosure ? 0 : hours,
           sickRef: null,
         })
       }
