@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -46,6 +46,17 @@ export default function Summary() {
     queryFn: () => fetchAllEntriesForMonth(year, month),
     enabled: user !== null && user.isAdmin === true,
   })
+
+  // Employees active during the selected month — must be before route guard (Rules of Hooks)
+  const visibleEmployees = useMemo(() => {
+    const firstDay = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).toISOString().slice(0, 10)
+    return (employees ?? []).filter(emp => {
+      if (emp.createdAt > lastDay) return false
+      if (emp.deactivatedAt && emp.deactivatedAt < firstDay) return false
+      return true
+    })
+  }, [employees, year, month])
 
   // Route guards — AFTER all hooks
   if (!user || !user.isAdmin) return <Navigate to='/' replace />
@@ -112,7 +123,7 @@ export default function Summary() {
           <Button
             variant='outline'
             disabled={!allEntries || allEntries.length === 0}
-            onClick={() => exportSummaryToExcel(employees ?? [], allEntries ?? [], month, year)}
+            onClick={() => exportSummaryToExcel(visibleEmployees, allEntries ?? [], month, year)}
           >
             Download Excel
           </Button>
@@ -155,7 +166,7 @@ export default function Summary() {
         </div>
 
         <div className='overflow-x-auto rounded-lg border'>
-          <SummaryTable employees={employees ?? []} allEntries={allEntries ?? []} />
+          <SummaryTable employees={visibleEmployees} allEntries={allEntries ?? []} />
         </div>
       </main>
     </div>

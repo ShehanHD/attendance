@@ -88,16 +88,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       .find({ isActive: { $ne: false } })
       .toArray() as Array<{ _id: { toString(): string }; standardHours?: unknown }>
 
-    const closures = await db
-      .collection('closures')
-      .find({
-        date: { $lt: nextMonthStart },
-        $or: [
-          { endDate: { $gte: monthStart } },
-          { endDate: { $exists: false } },
-        ],
-      })
-      .toArray() as ClosureRange[]
+    const closures = (await db
+        .collection('closures')
+        .find({
+          date: { $lt: nextMonthStart },
+          $or: [
+            { endDate: { $gte: monthStart } },
+            { endDate: { $exists: false } },
+          ],
+        })
+        .toArray()).map(doc => ({
+      date: doc['date'] as string,
+      ...(doc['endDate'] !== undefined && { endDate: doc['endDate'] as string }),
+    })) satisfies ClosureRange[]
 
     // Fetch all employee IDs with existing attendance entries for this month in a single query.
     const existingIds = await db

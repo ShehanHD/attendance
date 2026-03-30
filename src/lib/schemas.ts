@@ -7,6 +7,9 @@ export const EmployeeSchema = z.object({
   isAdmin: z.boolean(),
   isActive: z.boolean().default(true),
   hasTickets: z.boolean().default(true),
+  // Default pre-dates any reporting period for legacy records that lack this field
+  createdAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).default('2026-01-01'),
+  deactivatedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 })
 
 export const AttendanceEntryTypeSchema = z.enum([

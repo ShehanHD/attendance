@@ -67,14 +67,16 @@ async function handlePost(req: VercelRequest, res: VercelResponse): Promise<void
   }
   try {
     const db = await getDb()
-    const doc: Record<string, unknown> = { name, standardHours, isAdmin, isActive: true, hasTickets }
+    const today = new Date().toISOString().slice(0, 10)
+    const doc: Record<string, unknown> = { name, standardHours, isAdmin, isActive: true, hasTickets, createdAt: today }
     if (email && password) {
       doc.email = email.toLowerCase()
       doc.passwordHash = await bcrypt.hash(password, 12)
       doc.mustChangePassword = true
     }
     const result = await db.collection('employees').insertOne(doc)
-    const employee = { _id: result.insertedId.toString(), name, standardHours, isAdmin, isActive: true, hasTickets }
+    const { passwordHash: _ph, mustChangePassword: _mcp, ...safeDoc } = doc
+    const employee = { _id: result.insertedId.toString(), ...safeDoc }
     res.status(201).json({ employee })
   } catch (err: unknown) {
     if (typeof err === 'object' && err !== null && 'code' in err && err.code === 11000) {
@@ -101,13 +103,22 @@ async function handlePut(req: VercelRequest, res: VercelResponse): Promise<void>
   }
   try {
     const db = await getDb()
-    const result = await db
-      .collection('employees')
-      .findOneAndUpdate({ _id: oid }, { $set: fields }, { returnDocument: 'after' })
-    if (!result) {
+    const current = await db.collection('employees').findOne({ _id: oid })
+    if (!current) {
       res.status(404).json({ error: 'Employee not found' })
       return
     }
+    const today = new Date().toISOString().slice(0, 10)
+    const updateFields: Record<string, unknown> = { ...fields }
+    const wasActive = current.isActive !== false
+    if (wasActive && fields.isActive === false) {
+      updateFields.deactivatedAt = today
+    } else if (!wasActive && fields.isActive === true) {
+      updateFields.deactivatedAt = null
+    }
+    const result = await db
+      .collection('employees')
+      .findOneAndUpdate({ _id: oid }, { $set: updateFields }, { returnDocument: 'after' })
     const { _id: docId, ...rest } = result as { _id: { toString(): string }; [key: string]: unknown }
     res.status(200).json({ employee: { _id: docId.toString(), ...rest } })
   } catch {

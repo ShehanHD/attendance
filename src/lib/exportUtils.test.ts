@@ -21,8 +21,14 @@ import type { Employee, AttendanceEntry } from './schemas'
 import * as XLSX from 'xlsx'
 
 const employees: Employee[] = [
-  { _id: 'emp1', name: 'Alice', standardHours: 8, isAdmin: false, isActive: true, hasTickets: true },
-  { _id: 'emp2', name: 'Bob',   standardHours: 8, isAdmin: true,  isActive: true, hasTickets: true },
+  {
+    _id: 'emp1', name: 'Alice', standardHours: 8, isAdmin: false, isActive: true, hasTickets: true,
+    createdAt: ""
+  },
+  {
+    _id: 'emp2', name: 'Bob', standardHours: 8, isAdmin: true, isActive: true, hasTickets: true,
+    createdAt: ""
+  },
 ]
 
 const entries: AttendanceEntry[] = [
