@@ -36,7 +36,8 @@ function getEasterMonday(year: number): { month: number; day: number } {
   const m = Math.floor((a + 11 * h + 22 * l) / 451)
   const easterMonth = Math.floor((h + l - 7 * m + 114) / 31)
   const easterDay = ((h + l - 7 * m + 114) % 31) + 1
-  const monday = new Date(year, easterMonth - 1, easterDay + 1)
+  const easter = new Date(year, easterMonth - 1, easterDay)
+  const monday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1)
   return { month: monday.getMonth() + 1, day: monday.getDate() }
 }
 
@@ -89,7 +90,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     const closures = await db
       .collection('closures')
-      .find({})
+      .find({
+        date: { $lt: nextMonthStart },
+        $or: [
+          { endDate: { $gte: monthStart } },
+          { endDate: { $exists: false } },
+        ],
+      })
       .toArray() as ClosureRange[]
 
     // Fetch all employee IDs with existing attendance entries for this month in a single query.
@@ -133,7 +140,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     res.status(200).json({ initialized, skipped })
-  } catch {
+  } catch (err) {
+    console.error('[cron-init-month] Error:', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 }
