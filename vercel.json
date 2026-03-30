@@ -5,6 +5,10 @@
     {
       "path": "/api/send-summary",
       "schedule": "0 8 28-31 * *"
+    },
+    {
+      "path": "/api/cron-init-month",
+      "schedule": "0 0 1 * *"
     }
   ]
 }
