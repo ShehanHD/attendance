@@ -252,7 +252,7 @@ export default function ProfileModal({ open, onClose }: Props) {
               onClick={handleRegisterBiometric}
             >
               {registeringBio && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
-              {registeringBio ? 'Waiting for biometric…' : 'Register New Device'}
+              {registeringBio ? 'Waiting for biometric…' : 'Register This Device'}
             </Button>
             <Button
               type='button'

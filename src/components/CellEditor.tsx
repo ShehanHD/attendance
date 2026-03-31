@@ -59,6 +59,12 @@ export default function CellEditor({ entry, onSave, children }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className='w-64 space-y-4 p-5'>
+        <p className='text-xs font-medium text-muted-foreground border-b pb-2'>
+          {(() => {
+            const [y, m, d] = entry.date.split('-').map(Number)
+            return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+          })()}
+        </p>
         <div className='space-y-1'>
           <Label>Type</Label>
           <Select

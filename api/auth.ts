@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { ObjectId } from 'mongodb'
+import nodemailer from 'nodemailer'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
 import { signJwt, verifyJwt, setAuthCookie, clearAuthCookie } from './_auth.js'
@@ -13,7 +14,6 @@ const LoginBodySchema = z.object({
 const SetCredentialsBodySchema = z.object({
   employeeId: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
 const ChangePasswordBodySchema = z.object({
@@ -159,25 +159,123 @@ async function handleSetCredentials(req: VercelRequest, res: VercelResponse): Pr
     res.status(400).json({ error: parsed.error.issues[0].message })
     return
   }
-  const { employeeId, email, password } = parsed.data
+  const { employeeId, email } = parsed.data
 
   let oid: ObjectId
   try { oid = new ObjectId(employeeId) } catch {
     res.status(400).json({ error: 'Invalid employee ID' }); return
   }
 
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, APP_URL } = process.env
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+    res.status(500).json({ error: 'SMTP environment variables not configured' })
+    return
+  }
+  const appUrl = APP_URL ?? ''
+
+  // Generate a temporary password server-side
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  const bytes = Array.from({ length: 12 }, () => Math.floor(Math.random() * chars.length))
+  const tempPassword = bytes.map(i => chars[i]).join('')
+
   try {
     const db = await getDb()
-    const passwordHash = await bcrypt.hash(password, 12)
+    const passwordHash = await bcrypt.hash(tempPassword, 12)
     const result = await db.collection('employees').findOneAndUpdate(
       { _id: oid },
-      { $set: { email: email.toLowerCase(), passwordHash } },
+      { $set: { email: email.toLowerCase(), passwordHash, mustChangePassword: true } },
       { returnDocument: 'after' }
     )
     if (!result) {
       res.status(404).json({ error: 'Employee not found' })
       return
     }
+
+    const employeeName = (result.name as string | undefined) ?? 'there'
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    })
+    const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#18181b;padding:24px 40px;">
+            ${appUrl
+              ? `<img src="${appUrl}/LOGO-VCS-variante_colore2.png" alt="VCS" height="36" style="display:block;height:36px;width:auto;border:0;">`
+              : `<p style="margin:0;font-size:18px;font-weight:600;color:#ffffff;letter-spacing:-0.3px;">VCS</p>`}
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 6px;font-size:22px;font-weight:600;color:#18181b;letter-spacing:-0.4px;">Welcome, ${employeeName}</p>
+            <p style="margin:0 0 28px;font-size:15px;color:#71717a;line-height:1.6;">Your login has been set up. Use the credentials below to sign in for the first time.</p>
+
+            <!-- Credentials box -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border:1px solid #e4e4e7;border-radius:8px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.6px;">Your credentials</p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="font-size:13px;color:#71717a;padding-bottom:6px;width:80px;">Email</td>
+                      <td style="font-size:13px;font-weight:500;color:#18181b;padding-bottom:6px;">${email}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-size:13px;color:#71717a;">Password</td>
+                      <td style="font-size:14px;font-weight:600;color:#18181b;font-family:'Courier New',monospace;letter-spacing:1px;">${tempPassword}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 24px;font-size:13px;color:#71717a;line-height:1.6;">You will be prompted to set a new password after your first login.</p>
+
+            ${appUrl ? `<!-- CTA button -->
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:8px;background:#18181b;">
+                  <a href="${appUrl}" target="_blank" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:-0.1px;">Open app →</a>
+                </td>
+              </tr>
+            </table>` : ''}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px;border-top:1px solid #f4f4f5;">
+            <p style="margin:0;font-size:12px;color:#a1a1aa;line-height:1.6;">If you didn't expect this email, you can safely ignore it.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+    const textBody = `Hi ${employeeName},\n\nYour login has been set up.\n\nEmail: ${email}\nTemporary password: ${tempPassword}\n\nYou will be prompted to set a new password after your first login.${appUrl ? `\n\nOpen the app: ${appUrl}` : ''}\n\nIf you didn't expect this email, you can safely ignore it.`
+
+    await transporter.sendMail({
+      from: SMTP_FROM,
+      to: email,
+      subject: 'Your login credentials',
+      text: textBody,
+      html: htmlBody,
+    })
+
     res.status(200).json({ success: true })
   } catch (err: unknown) {
     // Duplicate email
@@ -185,6 +283,7 @@ async function handleSetCredentials(req: VercelRequest, res: VercelResponse): Pr
       res.status(409).json({ error: 'Email already in use' })
       return
     }
+    console.error('[auth set-credentials]', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Download, Mail, ArrowLeft } from 'lucide-react'
+import { Download, Mail, ArrowLeft, Menu } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -14,6 +14,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useQuery } from '@tanstack/react-query'
 import { useEmployees } from '@/hooks/useEmployees'
 import { useAuth } from '@/contexts/AuthContext'
@@ -140,7 +146,9 @@ export default function Summary() {
     <div className='min-h-screen bg-background'>
       <header className='border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3'>
         <h1 className='text-lg sm:text-xl font-semibold'>Summary</h1>
-        <div className='flex items-center gap-2'>
+
+        {/* Desktop buttons */}
+        <div className='hidden sm:flex items-center gap-2'>
           <Button
             variant='outline'
             disabled={!allEntries || allEntries.length === 0}
@@ -158,6 +166,34 @@ export default function Summary() {
           <Button variant='outline' onClick={() => navigate('/attendance')}>
             <ArrowLeft className='h-4 w-4' />Back
           </Button>
+        </div>
+
+        {/* Mobile: back + overflow menu */}
+        <div className='flex items-center gap-2 sm:hidden'>
+          <Button variant='outline' size='icon' onClick={() => navigate('/attendance')}>
+            <ArrowLeft className='h-4 w-4' />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant='outline' size='icon'>
+                <Menu className='h-5 w-5' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end' className='w-52'>
+              <DropdownMenuItem
+                disabled={!allEntries || allEntries.length === 0}
+                onClick={() => exportSummaryToExcel(visibleEmployees, allEntries ?? [], month, year)}
+              >
+                <Download className='h-4 w-4 mr-2' />Download Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isSending}
+                onClick={() => { setRecipientInput(''); setCopyToMe(false); setSendDialogOpen(true) }}
+              >
+                <Mail className='h-4 w-4 mr-2' />{isSending ? 'Sending…' : 'Send Summary by Email'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 

@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import {Navigate, useNavigate} from 'react-router-dom'
 import {toast} from 'sonner'
-import { ArrowLeft, UserPlus, Pencil, KeyRound, UserCheck, UserX, Trash2, Plus, Users, CalendarOff, RefreshCw, Copy, Check } from 'lucide-react'
+import { ArrowLeft, UserPlus, Pencil, KeyRound, UserCheck, UserX, Trash2, Plus, Users, CalendarOff } from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 import {setEmployeeCredentials} from '@/lib/mongoApi'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table'
@@ -52,10 +52,7 @@ export default function Employees() {
   // Credentials dialog state
   const [credTarget, setCredTarget] = useState<Employee | null>(null)
   const [credEmail, setCredEmail] = useState('')
-  const [credPassword, setCredPassword] = useState('')
   const [credSaving, setCredSaving] = useState(false)
-  const [credGenerated, setCredGenerated] = useState(false)
-  const [credCopied, setCredCopied] = useState(false)
 
   if (!user || !user.isAdmin) return <Navigate to='/' replace />
 
@@ -87,35 +84,17 @@ export default function Employees() {
   const handleOpenCredentials = (emp: Employee) => {
     setCredTarget(emp)
     setCredEmail('')
-    setCredPassword('')
-    setCredGenerated(false)
-    setCredCopied(false)
-  }
-
-  const handleGeneratePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-    const bytes = crypto.getRandomValues(new Uint8Array(12))
-    const pwd = Array.from(bytes).map(b => chars[b % chars.length]).join('')
-    setCredPassword(pwd)
-    setCredGenerated(true)
-    setCredCopied(false)
-  }
-
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(credPassword)
-    setCredCopied(true)
-    setTimeout(() => setCredCopied(false), 2000)
   }
 
   const handleSaveCredentials = async () => {
     if (!credTarget) return
     setCredSaving(true)
     try {
-      await setEmployeeCredentials(credTarget._id, credEmail, credPassword)
-      toast.success('Credentials saved', { description: `Login set for ${credTarget.name}.` })
+      await setEmployeeCredentials(credTarget._id, credEmail)
+      toast.success('Login email sent', { description: `Temporary password sent to ${credEmail}.` })
       setCredTarget(null)
     } catch (err) {
-      toast.error('Failed to save credentials', {
+      toast.error('Failed to set credentials', {
         description: err instanceof Error ? err.message : 'Unknown error',
       })
     } finally {
@@ -171,13 +150,12 @@ export default function Employees() {
                     <TableHead>Type</TableHead>
                     <TableHead>Admin</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Login</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(employees ?? []).map((emp) => {
-                    const isInactive = emp.isActive === false
+                    const isInactive = !emp.isActive
                     const cellClass = isInactive ? 'text-muted-foreground' : ''
                     return (
                       <TableRow key={emp._id}>
@@ -192,12 +170,10 @@ export default function Employees() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button size='sm' variant='ghost' className='gap-1.5' onClick={() => handleOpenCredentials(emp)}>
-                            <KeyRound className='h-3.5 w-3.5' />Set login
-                          </Button>
-                        </TableCell>
-                        <TableCell>
                           <div className='flex gap-2'>
+                            <Button size='sm' variant='outline' className='gap-1.5' onClick={() => handleOpenCredentials(emp)}>
+                              <KeyRound className='h-3.5 w-3.5' />Set login
+                            </Button>
                             <Button size='sm' variant='outline' className='gap-1.5' onClick={() => handleEdit(emp)}><Pencil className='h-3.5 w-3.5' />Edit</Button>
                             {isInactive ? (
                               <Button size='sm' variant='outline' className='gap-1.5' onClick={() => setReactivateTarget(emp)}>
@@ -304,45 +280,9 @@ export default function Employees() {
                 autoComplete='off'
               />
             </div>
-            <div className='space-y-1'>
-              <div className='flex items-center justify-between'>
-                <Label htmlFor='cred-password'>Temporary Password</Label>
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='ghost'
-                  className='h-auto py-0 text-xs text-muted-foreground hover:text-foreground'
-                  onClick={handleGeneratePassword}
-                >
-                  <RefreshCw className='h-3 w-3 mr-1' />Generate
-                </Button>
-              </div>
-              <div className='flex gap-2'>
-                <Input
-                  id='cred-password'
-                  type={credGenerated ? 'text' : 'password'}
-                  value={credPassword}
-                  onChange={e => { setCredPassword(e.target.value); setCredGenerated(false) }}
-                  placeholder='Min. 8 characters'
-                  autoComplete='new-password'
-                  className='font-mono'
-                />
-                {credGenerated && (
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
-                    className='shrink-0'
-                    onClick={handleCopyPassword}
-                  >
-                    {credCopied ? <><Check className='h-3.5 w-3.5 mr-1' />Copied!</> : <><Copy className='h-3.5 w-3.5 mr-1' />Copy</>}
-                  </Button>
-                )}
-              </div>
-              <p className='text-xs text-muted-foreground'>
-                Employee will be asked to change this on first login.
-              </p>
-            </div>
+            <p className='text-xs text-muted-foreground'>
+              A temporary password will be generated and emailed to this address. The employee will be asked to change it on first login.
+            </p>
           </div>
           <DialogFooter>
             <Button variant='outline' onClick={() => setCredTarget(null)} disabled={credSaving}>
@@ -350,9 +290,9 @@ export default function Employees() {
             </Button>
             <Button
               onClick={handleSaveCredentials}
-              disabled={!credEmail || credPassword.length < 8 || credSaving}
+              disabled={!credEmail || credSaving}
             >
-              {credSaving ? 'Saving…' : 'Save'}
+              {credSaving ? 'Sending…' : 'Send login email'}
             </Button>
           </DialogFooter>
         </DialogContent>

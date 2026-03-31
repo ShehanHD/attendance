@@ -184,12 +184,11 @@ export async function getMe(): Promise<AuthUser | null> {
 export async function setEmployeeCredentials(
   employeeId: string,
   email: string,
-  password: string
 ): Promise<void> {
   const res = await fetch('/api/auth', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ employeeId, email, password }),
+    body: JSON.stringify({ employeeId, email }),
   })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)

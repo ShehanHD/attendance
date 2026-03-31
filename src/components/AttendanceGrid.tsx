@@ -334,7 +334,7 @@ export default function AttendanceGrid({ employee, closures, onDirtyChange }: Pr
                   <div className='text-[10px] text-muted-foreground font-medium leading-none'>{day}</div>
                   {isReadOnly || !entry ? cellContent : (
                     <CellEditor entry={entry} onSave={handleCellSave}>
-                      <button className='mt-0.5 flex items-center justify-center w-full h-8 rounded hover:bg-muted/50 active:bg-muted/70 transition-colors px-0.5'>
+                      <button className='mt-0.5 flex items-center justify-center w-full h-8 rounded hover:bg-muted/50 active:bg-muted/70 data-[state=open]:bg-accent data-[state=open]:ring-2 data-[state=open]:ring-ring transition-colors px-0.5'>
                         {/* Mobile: colored dot */}
                         <span className={`sm:hidden w-3 h-3 rounded-full flex-shrink-0 ${DOT_COLORS[entry.type]}`} />
                         {/* Desktop: text label */}
