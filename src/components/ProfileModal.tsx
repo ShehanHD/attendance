@@ -246,7 +246,7 @@ export default function ProfileModal({ open, onClose }: Props) {
             </div>
             <Button
               type='button'
-              variant='outline'
+              variant='default'
               className='w-full'
               disabled={registeringBio}
               onClick={handleRegisterBiometric}
@@ -256,8 +256,8 @@ export default function ProfileModal({ open, onClose }: Props) {
             </Button>
             <Button
               type='button'
-              variant='ghost'
-              className='w-full text-muted-foreground'
+              variant='outline'
+              className='w-full'
               disabled={sendingLink}
               onClick={handleSendLink}
             >

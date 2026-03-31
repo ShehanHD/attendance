@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { startRegistration } from '@simplewebauthn/browser'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   validateMagicToken,
   getWebAuthnRegisterOptions,
@@ -19,6 +21,7 @@ type PageState =
 export default function RegisterDevice() {
   const token = new URLSearchParams(window.location.search).get('token') ?? ''
   const [state, setState] = useState<PageState>({ status: 'loading' })
+  const [deviceName, setDeviceName] = useState('')
 
   useEffect(() => {
     if (!token) {
@@ -37,7 +40,7 @@ export default function RegisterDevice() {
     try {
       const options = await getWebAuthnRegisterOptions(token)
       const response = await startRegistration({ optionsJSON: options as never })
-      await verifyWebAuthnRegistration(response, undefined, token)
+      await verifyWebAuthnRegistration(response, deviceName.trim() || undefined, token)
       await completeDeviceRegistration(token)
       setState({ status: 'success' })
       setTimeout(() => {
@@ -63,6 +66,17 @@ export default function RegisterDevice() {
             <div className='space-y-1'>
               <h1 className='text-2xl font-semibold tracking-tight'>Register this device</h1>
               <p className='text-sm text-muted-foreground'>for {state.employeeName}</p>
+            </div>
+            <div className='text-left space-y-1'>
+              <Label htmlFor='device-name'>
+                Device Name <span className='text-muted-foreground font-normal'>(optional)</span>
+              </Label>
+              <Input
+                id='device-name'
+                value={deviceName}
+                onChange={e => setDeviceName(e.target.value)}
+                placeholder='e.g. iPhone Face ID'
+              />
             </div>
             <Button className='w-full' onClick={handleRegister}>
               Register Device
