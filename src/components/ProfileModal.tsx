@@ -133,12 +133,12 @@ export default function ProfileModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='sm:max-w-md'>
+      <DialogContent className='flex flex-col overflow-hidden top-0 left-0 translate-x-0 translate-y-0 max-w-none w-full h-full rounded-none sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-md sm:w-full sm:h-auto sm:max-h-[90vh] sm:rounded-xl'>
         <DialogHeader>
           <DialogTitle>{user?.name ?? 'Profile'}</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-6 py-2'>
+        <div className='flex-1 overflow-y-auto space-y-6 py-2'>
           {/* Change Password */}
           <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>
