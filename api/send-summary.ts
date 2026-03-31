@@ -102,10 +102,10 @@ function buildMjmlHtml(
   year: number
 ): string {
   const monthName = MONTH_NAMES[month - 1]
-  const appUrl = process.env.APP_URL ?? ''
+  const safeAppUrl = (process.env.APP_URL ?? '').replace(/"/g, '%22')
 
-  const logoHtml = appUrl
-    ? `<mj-image width="120px" src="${appUrl}/LOGO-VCS-variante_colore2.png" align="left" padding="0" />`
+  const logoHtml = safeAppUrl
+    ? `<mj-image width="120px" src="${safeAppUrl}/LOGO-VCS-variante_colore2.png" align="left" padding="0" />`
     : `<mj-text color="#ffffff" font-size="18px" font-weight="bold" padding="0">VCS</mj-text>`
 
   const rows = employees.map((emp, i) => {
@@ -189,7 +189,11 @@ function buildMjmlHtml(
   </mj-body>
 </mjml>`
 
-  return mjml(template, { validationLevel: 'soft' }).html
+  const result = mjml(template, { validationLevel: 'soft' })
+  if (result.errors.length > 0) {
+    console.error('[send-summary] MJML warnings:', result.errors)
+  }
+  return result.html
 }
 
 // ── Core send logic ───────────────────────────────────────────────────────────
