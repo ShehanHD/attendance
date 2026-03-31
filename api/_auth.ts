@@ -61,3 +61,54 @@ export async function requireAuth(
     return null
   }
 }
+
+export async function signMagicToken(employeeId: string): Promise<string> {
+  return new SignJWT({ purpose: 'device-registration' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(employeeId)
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(getSecret())
+}
+
+export async function verifyMagicToken(token: string): Promise<{ employeeId: string }> {
+  const { payload } = await jwtVerify(token, getSecret())
+  if (payload.purpose !== 'device-registration') {
+    throw new Error('Invalid magic token: wrong purpose')
+  }
+  if (typeof payload.sub !== 'string') {
+    throw new Error('Invalid magic token: missing sub')
+  }
+  return { employeeId: payload.sub }
+}
+
+// Resolves caller identity from either a session cookie or an x-magic-token header.
+// Cookie takes precedence when both are present.
+export async function resolveAuth(
+  req: VercelRequest,
+  res: VercelResponse
+): Promise<{ employeeId: string; isAdmin: boolean } | null> {
+  const cookieToken = req.cookies?.[COOKIE_NAME]
+  if (cookieToken) {
+    try {
+      return await verifyJwt(cookieToken)
+    } catch {
+      res.status(401).json({ error: 'Invalid or expired session' })
+      return null
+    }
+  }
+
+  const magicToken = req.headers['x-magic-token']
+  if (typeof magicToken === 'string') {
+    try {
+      const { employeeId } = await verifyMagicToken(magicToken)
+      return { employeeId, isAdmin: false }
+    } catch {
+      res.status(401).json({ error: 'Invalid or expired magic token' })
+      return null
+    }
+  }
+
+  res.status(401).json({ error: 'Not authenticated' })
+  return null
+}
