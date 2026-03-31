@@ -7,6 +7,7 @@ import Attendance from '@/pages/Attendance'
 import Summary from '@/pages/Summary'
 import Employees from '@/pages/Employees'
 import ChangePassword from '@/pages/ChangePassword'
+import RegisterDevice from '@/pages/RegisterDevice'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path='/summary' element={<ProtectedRoute><Summary /></ProtectedRoute>} />
           <Route path='/employees' element={<ProtectedRoute><Employees /></ProtectedRoute>} />
           <Route path='/change-password' element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+          <Route path='/register-device' element={<RegisterDevice />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

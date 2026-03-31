@@ -199,8 +199,10 @@ export async function setEmployeeCredentials(
 
 // ── WebAuthn ──────────────────────────────────────────────────────────────────
 
-export async function getWebAuthnRegisterOptions(): Promise<unknown> {
-  const res = await fetch('/api/webauthn-register-options', { method: 'GET' })
+export async function getWebAuthnRegisterOptions(magicToken?: string): Promise<unknown> {
+  const headers: Record<string, string> = {}
+  if (magicToken) headers['x-magic-token'] = magicToken
+  const res = await fetch('/api/webauthn-register-options', { method: 'GET', headers })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`API error ${res.status}: ${text}`)
@@ -210,11 +212,14 @@ export async function getWebAuthnRegisterOptions(): Promise<unknown> {
 
 export async function verifyWebAuthnRegistration(
   response: unknown,
-  deviceName?: string
+  deviceName?: string,
+  magicToken?: string
 ): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (magicToken) headers['x-magic-token'] = magicToken
   const res = await fetch('/api/webauthn-register-verify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ response, deviceName }),
   })
   if (!res.ok) {
@@ -256,6 +261,34 @@ export async function fetchWebAuthnCredentials(): Promise<BiometricDevice[]> {
 
 export async function deleteWebAuthnCredential(id: string): Promise<void> {
   const res = await fetch(`/api/webauthn-credentials?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+}
+
+export async function sendDeviceRegistrationLink(): Promise<void> {
+  const res = await fetch('/api/webauthn-magic-link', { method: 'POST' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+}
+
+export async function validateMagicToken(token: string): Promise<{ employeeName: string }> {
+  return apiFetch(
+    `/api/webauthn-magic-link?token=${encodeURIComponent(token)}`,
+    { method: 'GET' },
+    z.object({ employeeName: z.string() })
+  )
+}
+
+export async function completeDeviceRegistration(token: string): Promise<void> {
+  const res = await fetch('/api/webauthn-magic-link-complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`API error ${res.status}: ${text}`)
