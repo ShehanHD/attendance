@@ -43,7 +43,7 @@ RegisterDevicePage
   - Runs WebAuthn registration:
       GET  /api/webauthn-register-options   (X-Magic-Token header)
       POST /api/webauthn-register-verify    (X-Magic-Token header)
-  - On success: POST /api/webauthn-magic-link/complete
+  - On success: POST /api/webauthn-magic-link-complete
     → Issues auth cookie
     → Frontend redirects to /
 ```
@@ -68,11 +68,12 @@ RegisterDevicePage
 - Returns `{ employeeName: string }`
 - Returns `401` if token invalid or expired
 
-**`POST /api/webauthn-magic-link/complete`**
+**`POST /api/webauthn-magic-link-complete`**
 - Auth: public
 - Body: `{ token: string }`
 - Verifies JWT → extracts `employeeId` → issues standard auth cookie
 - Returns `200`
+- Note: flat naming (`-complete` suffix) to match Vercel file-based routing convention used across the project
 
 ### Modified endpoints
 
@@ -96,12 +97,12 @@ RegisterDevicePage
   - Invalid/expired → shows error message with link back to login
   - Valid → shows "Register this device for `<employeeName>`" with "Register Device" button
 - On button click: runs WebAuthn registration flow passing `X-Magic-Token` header
-- On success: calls `POST /api/webauthn-magic-link/complete` → `window.location.href = "/"`
+- On success: calls `POST /api/webauthn-magic-link-complete` → `window.location.href = "/"`
 
 ### `src/lib/mongoApi.ts` (modified)
 - `sendDeviceRegistrationLink()` — wraps `POST /api/webauthn-magic-link`
 - `validateMagicToken(token)` — wraps `GET /api/webauthn-magic-link?token=`
-- `completeDeviceRegistration(token)` — wraps `POST /api/webauthn-magic-link/complete`
+- `completeDeviceRegistration(token)` — wraps `POST /api/webauthn-magic-link-complete`
 - `startWebAuthnRegistration` / `verifyWebAuthnRegistration` — add optional `magicToken?: string` param that sets `X-Magic-Token` header when present
 
 ---
@@ -137,7 +138,8 @@ RegisterDevicePage
 
 | File | Change |
 |------|--------|
-| `api/webauthn-magic-link.ts` | New — handles POST (send link) + GET (validate token) + POST /complete |
+| `api/webauthn-magic-link.ts` | New — handles POST (send link) + GET (validate token) |
+| `api/webauthn-magic-link-complete.ts` | New — handles POST (issue auth cookie after successful registration) |
 | `api/webauthn-register-options.ts` | Modified — add `X-Magic-Token` fallback |
 | `api/webauthn-register-verify.ts` | Modified — add `X-Magic-Token` fallback |
 | `src/pages/RegisterDevice.tsx` | New page component |
