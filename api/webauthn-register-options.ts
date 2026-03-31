@@ -2,7 +2,7 @@ import {type AuthenticatorTransport, generateRegistrationOptions} from '@simplew
 import { ObjectId } from 'mongodb'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
-import { requireAuth } from './_auth.js'
+import { resolveAuth } from './_auth.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'GET') {
@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const auth = await requireAuth(req, res)
+  const auth = await resolveAuth(req, res)
   if (!auth) return
 
   try {

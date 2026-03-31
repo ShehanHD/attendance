@@ -2,7 +2,7 @@ import { verifyRegistrationResponse } from '@simplewebauthn/server'
 import { z } from 'zod'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
-import { requireAuth } from './_auth.js'
+import { resolveAuth } from './_auth.js'
 
 const BodySchema = z.object({
   deviceName: z.string().trim().max(100).optional(),
@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const auth = await requireAuth(req, res)
+  const auth = await resolveAuth(req, res)
   if (!auth) return
 
   const parsed = BodySchema.safeParse(req.body)
