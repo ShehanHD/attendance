@@ -28,9 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
+  let oid: ObjectId
+  try { oid = new ObjectId(employeeId) } catch {
+    res.status(400).json({ error: 'Invalid token' }); return
+  }
+
   try {
     const db = await getDb()
-    const employee = await db.collection('employees').findOne({ _id: new ObjectId(employeeId) })
+    const employee = await db.collection('employees').findOne({ _id: oid })
     if (!employee) {
       res.status(401).json({ error: 'Invalid token' })
       return
@@ -39,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const jwt = await signJwt({ employeeId, isAdmin: !!employee.isAdmin })
     setAuthCookie(res, jwt)
     res.status(200).json({ success: true })
-  } catch {
-    res.status(401).json({ error: 'Invalid or expired link' })
+  } catch (err) {
+    console.error('[webauthn-magic-link-complete]', err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 }
