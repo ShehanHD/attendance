@@ -10,7 +10,7 @@ import { requireAuth } from './_auth.js'
 const BodySchema = z.object({
   year:       z.number().int().min(2000).max(2100),
   month:      z.number().int().min(1).max(12),
-  recipients: z.array(z.string().email()).min(1),
+  recipients: z.array(z.string().email()).min(1).optional(),
 })
 
 const EntryDocSchema = z.object({

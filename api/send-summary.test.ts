@@ -40,7 +40,7 @@ import handler from './send-summary.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function makeReq(overrides: Partial<VercelRequest> = {}): VercelRequest {
-  return { method: 'POST', headers: {}, body: { year: 2026, month: 3 }, ...overrides } as unknown as VercelRequest
+  return { method: 'POST', headers: {}, body: { year: 2026, month: 3, recipients: ['admin@example.com'] }, ...overrides } as unknown as VercelRequest
 }
 
 function makeRes() {
@@ -86,7 +86,7 @@ describe('POST /api/send-summary', () => {
   it('returns sent: 0 without sending when no admin has an email', async () => {
     mockFindEmployees.mockReturnValue({ toArray: vi.fn().mockResolvedValue([adminWithoutEmail]) })
     const res = makeRes()
-    await handler(makeReq(), res as unknown as VercelResponse)
+    await handler(makeReq({ body: { year: 2026, month: 3 } }), res as unknown as VercelResponse)
 
     expect(mockSendMail).not.toHaveBeenCalled()
     expect(res.json).toHaveBeenCalledWith({ sent: 0 })
@@ -124,6 +124,24 @@ describe('POST /api/send-summary', () => {
     const mail = mockSendMail.mock.calls[0][0]
     expect(mail.html).toContain('March 2026')
     expect(mail.html).toContain('<table')
+    expect(mail.html).toContain('Admin')           // employee name is present
+    expect(mail.html).not.toContain('sickRef')     // sick refs not in email body
+  })
+
+  it('color-codes sick days in red and shows dashes for zero absent hours', async () => {
+    mockFindEntries.mockReturnValue({
+      toArray: vi.fn().mockResolvedValue([
+        { employeeId: 'emp1', date: '2026-03-01', type: 'sick',    hours: 8, sickRef: 'REF-001' },
+        { employeeId: 'emp2', date: '2026-03-01', type: 'absent',  hours: 4, sickRef: null },
+      ]),
+    })
+    const res = makeRes()
+    await handler(makeReq(), res as unknown as VercelResponse)
+
+    const mail = mockSendMail.mock.calls[0][0]
+    expect(mail.html).toContain('#e74c3c')   // red for sick day
+    expect(mail.html).toContain('#e67e22')   // orange for absent hours
+    expect(mail.html).not.toContain('REF-001') // sick ref not leaked into email
   })
 
   it('email subject contains month name and year', async () => {
