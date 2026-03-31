@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
-import { fetchWebAuthnCredentials, deleteWebAuthnCredential } from '@/lib/mongoApi'
+import { fetchWebAuthnCredentials, deleteWebAuthnCredential, sendDeviceRegistrationLink } from '@/lib/mongoApi'
 import type { BiometricDevice } from '@/lib/schemas'
 
 interface Props {
@@ -34,6 +34,7 @@ export default function ProfileModal({ open, onClose }: Props) {
   const [devices, setDevices] = useState<BiometricDevice[]>([])
   const [devicesLoading, setDevicesLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [sendingLink, setSendingLink] = useState(false)
 
   // Load registered devices whenever modal opens
   useEffect(() => {
@@ -105,6 +106,20 @@ export default function ProfileModal({ open, onClose }: Props) {
       })
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleSendLink = async () => {
+    setSendingLink(true)
+    try {
+      await sendDeviceRegistrationLink()
+      toast.success('Registration link sent to your email')
+    } catch (err) {
+      toast.error('Failed to send link', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    } finally {
+      setSendingLink(false)
     }
   }
 
@@ -238,6 +253,16 @@ export default function ProfileModal({ open, onClose }: Props) {
             >
               {registeringBio && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
               {registeringBio ? 'Waiting for biometric…' : 'Register New Device'}
+            </Button>
+            <Button
+              type='button'
+              variant='ghost'
+              className='w-full text-muted-foreground'
+              disabled={sendingLink}
+              onClick={handleSendLink}
+            >
+              {sendingLink && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+              {sendingLink ? 'Sending…' : 'Send registration link to my email'}
             </Button>
           </section>
         </div>
