@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import * as XLSX from 'xlsx'
 import nodemailer from 'nodemailer'
+import mjml from 'mjml'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
 import { requireAuth } from './_auth.js'
@@ -94,57 +95,101 @@ function buildXlsxBuffer(
   return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Uint8Array)
 }
 
-function buildHtml(
+function buildMjmlHtml(
   employees: EmployeeDoc[],
   entriesByEmployee: Map<string, EntryDoc[]>,
   month: number,
   year: number
 ): string {
   const monthName = MONTH_NAMES[month - 1]
-  const tdStyle = 'padding:8px;border:1px solid #ddd'
-  const rows = employees.map(emp => {
+  const appUrl = process.env.APP_URL ?? ''
+
+  const logoHtml = appUrl
+    ? `<mj-image width="120px" src="${appUrl}/LOGO-VCS-variante_colore2.png" align="left" padding="0" />`
+    : `<mj-text color="#ffffff" font-size="18px" font-weight="bold" padding="0">VCS</mj-text>`
+
+  const rows = employees.map((emp, i) => {
+    const bg = i % 2 === 0 ? '#ffffff' : '#fafafa'
     const empEntries = entriesByEmployee.get(empId(emp)) ?? []
     if (empEntries.length === 0) {
-      return `<tr><td style="${tdStyle}">${escapeHtml(emp.name)}</td><td colspan="6" style="${tdStyle};color:#888">No entries</td></tr>`
+      return `<tr style="background-color:${bg}">
+        <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;font-weight:500">${escapeHtml(emp.name)}</td>
+        <td colspan="5" style="padding:8px 10px;border-bottom:1px solid #eeeeee;color:#999999">No entries</td>
+      </tr>`
     }
     const s = computeSummary(empEntries)
-    const sickRefs = empEntries
-      .filter((e): e is EntryDoc & { sickRef: string } =>
-        e.type === 'sick' && e.sickRef != null && e.sickRef.trim() !== ''
-      )
-      .map(e => e.sickRef)
-      .join(', ')
-    return `<tr>
-      <td style="${tdStyle}">${escapeHtml(emp.name)}</td>
-      <td style="${tdStyle};text-align:right">${s.hoursWorked}h</td>
-      <td style="${tdStyle};text-align:right">${s.absentHours > 0 ? `${s.absentHours}h` : '—'}</td>
-      <td style="${tdStyle};text-align:right">${s.vacationDays}</td>
-      <td style="${tdStyle};text-align:right">${s.sickDays}</td>
-      <td style="${tdStyle}">${sickRefs ? escapeHtml(sickRefs) : '—'}</td>
-      <td style="${tdStyle};text-align:right">${s.tickets}</td>
+    const fmtAbsent = s.absentHours > 0
+      ? `<span style="color:#e67e22;font-weight:bold">${s.absentHours}h</span>`
+      : `<span style="color:#999999">&#8212;</span>`
+    const fmtVacation = s.vacationDays > 0
+      ? `${s.vacationDays}`
+      : `<span style="color:#999999">&#8212;</span>`
+    const fmtSick = s.sickDays > 0
+      ? `<span style="color:#e74c3c;font-weight:bold">${s.sickDays}</span>`
+      : `<span style="color:#999999">&#8212;</span>`
+    return `<tr style="background-color:${bg}">
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;font-weight:500">${escapeHtml(emp.name)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;text-align:right">${s.hoursWorked}h</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;text-align:right">${fmtAbsent}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;text-align:right">${fmtVacation}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;text-align:right">${fmtSick}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #eeeeee;text-align:right">${s.tickets}</td>
     </tr>`
-  }).join('')
+  }).join('\n')
 
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family:sans-serif;color:#111;margin:24px">
-  <h2 style="margin-bottom:16px">Attendance Summary — ${monthName} ${year}</h2>
-  <table style="border-collapse:collapse;font-size:14px">
-    <thead>
-      <tr style="background:#f5f5f5">
-        <th style="${tdStyle}">Employee</th>
-        <th style="${tdStyle}">Hours Worked</th>
-        <th style="${tdStyle}">Absent Hours</th>
-        <th style="${tdStyle}">Vacation Days</th>
-        <th style="${tdStyle}">Sick Days</th>
-        <th style="${tdStyle}">Sick Refs</th>
-        <th style="${tdStyle}">Tickets</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-</body>
-</html>`
+  const thStyle = 'padding:8px 10px;border-bottom:2px solid #1e3a5f;color:#666666;font-size:11px;text-transform:uppercase;font-weight:600'
+
+  const template = `
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4">
+
+    <mj-section background-color="#1e3a5f" padding="16px 24px">
+      <mj-column vertical-align="middle">
+        ${logoHtml}
+      </mj-column>
+      <mj-column vertical-align="middle">
+        <mj-text align="right" color="#ffffff" font-size="16px" font-weight="bold" padding="0">
+          ${monthName} ${year}
+        </mj-text>
+        <mj-text align="right" color="rgba(255,255,255,0.65)" font-size="11px" padding="4px 0 0 0">
+          Monthly Report
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0">
+      <mj-column padding="0">
+        <mj-table font-size="13px" color="#111111" cell-padding="0">
+          <tr style="background-color:#f0f4f8">
+            <th style="${thStyle};text-align:left">Employee</th>
+            <th style="${thStyle};text-align:right">Hours</th>
+            <th style="${thStyle};text-align:right">Absent</th>
+            <th style="${thStyle};text-align:right">Vacation</th>
+            <th style="${thStyle};text-align:right">Sick</th>
+            <th style="${thStyle};text-align:right">Tickets</th>
+          </tr>
+          ${rows}
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#f5f7fa" padding="10px 24px">
+      <mj-column>
+        <mj-text font-size="11px" color="#aaaaaa" align="center" padding="8px 0">
+          Excel report attached &#xB7; Sent automatically
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>`
+
+  return mjml(template, { validationLevel: 'soft' }).html
 }
 
 // ── Core send logic ───────────────────────────────────────────────────────────
@@ -188,7 +233,7 @@ async function sendSummary(year: number, month: number, res: VercelResponse, exp
   }
 
   const xlsxBuffer = buildXlsxBuffer(employeeDocs, entriesByEmployee)
-  const html = buildHtml(employeeDocs, entriesByEmployee, month, year)
+  const html = buildMjmlHtml(employeeDocs, entriesByEmployee, month, year)
   const monthName = MONTH_NAMES[month - 1]
 
   const transporter = nodemailer.createTransport({
