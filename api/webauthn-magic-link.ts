@@ -49,7 +49,7 @@ async function handleSend(req: VercelRequest, res: VercelResponse): Promise<void
     const token = await signMagicToken(auth.employeeId)
     const link = `${APP_URL}/register-device?token=${encodeURIComponent(token)}`
     const employeeName = typeof employee.name === 'string' ? employee.name : 'there'
-    const recipientEmail = employee.email as string
+    const recipientEmail = typeof employee.email === 'string' ? employee.email : String(employee.email)
 
     const html = buildMagicLinkHtml(employeeName, link, APP_URL)
     const text = buildMagicLinkText(employeeName, link)
@@ -109,7 +109,7 @@ async function handleValidate(req: VercelRequest, res: VercelResponse): Promise<
       res.status(401).json({ error: 'Invalid token' })
       return
     }
-    res.status(200).json({ employeeName: employee.name as string })
+    res.status(200).json({ employeeName: typeof employee.name === 'string' ? employee.name : String(employee.name ?? '') })
   } catch (err) {
     console.error('[webauthn-magic-link validate]', err)
     res.status(500).json({ error: 'Internal server error' })
