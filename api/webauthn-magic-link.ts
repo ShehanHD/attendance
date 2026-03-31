@@ -2,13 +2,20 @@ import nodemailer from 'nodemailer'
 import { ObjectId } from 'mongodb'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from './_db.js'
-import { requireAuth, signMagicToken, verifyMagicToken } from './_auth.js'
+import { z } from 'zod'
+import { requireAuth, signMagicToken, verifyMagicToken, signJwt, setAuthCookie } from './_auth.js'
+
+// POST  — send the magic link email (requires auth cookie)
+// GET   — validate the token and return employee name (public)
+// PATCH — issue auth cookie after successful device registration (public)
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method === 'POST') {
     await handleSend(req, res)
   } else if (req.method === 'GET') {
     await handleValidate(req, res)
+  } else if (req.method === 'PATCH') {
+    await handleComplete(req, res)
   } else {
     res.status(405).json({ error: 'Method not allowed' })
   }
@@ -112,6 +119,45 @@ async function handleValidate(req: VercelRequest, res: VercelResponse): Promise<
     res.status(200).json({ employeeName: typeof employee.name === 'string' ? employee.name : String(employee.name ?? '') })
   } catch (err) {
     console.error('[webauthn-magic-link validate]', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+}
+
+// PATCH — issue an auth cookie after the new device completes WebAuthn registration
+const CompleteBodySchema = z.object({ token: z.string().min(1) })
+
+async function handleComplete(req: VercelRequest, res: VercelResponse): Promise<void> {
+  const parsed = CompleteBodySchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Missing token' })
+    return
+  }
+
+  let employeeId: string
+  try {
+    ;({ employeeId } = await verifyMagicToken(parsed.data.token))
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired link' })
+    return
+  }
+
+  let oid: ObjectId
+  try { oid = new ObjectId(employeeId) } catch {
+    res.status(400).json({ error: 'Invalid token' }); return
+  }
+
+  try {
+    const db = await getDb()
+    const employee = await db.collection('employees').findOne({ _id: oid })
+    if (!employee) {
+      res.status(401).json({ error: 'Invalid token' })
+      return
+    }
+    const jwt = await signJwt({ employeeId, isAdmin: !!employee.isAdmin })
+    setAuthCookie(res, jwt)
+    res.status(200).json({ success: true })
+  } catch (err) {
+    console.error('[webauthn-magic-link complete]', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 }

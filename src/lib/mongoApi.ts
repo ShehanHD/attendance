@@ -201,7 +201,7 @@ export async function setEmployeeCredentials(
 export async function getWebAuthnRegisterOptions(magicToken?: string): Promise<unknown> {
   const headers: Record<string, string> = {}
   if (magicToken) headers['x-magic-token'] = magicToken
-  const res = await fetch('/api/webauthn-register-options', { method: 'GET', headers })
+  const res = await fetch('/api/webauthn-register', { method: 'GET', headers })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`API error ${res.status}: ${text}`)
@@ -216,7 +216,7 @@ export async function verifyWebAuthnRegistration(
 ): Promise<void> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (magicToken) headers['x-magic-token'] = magicToken
-  const res = await fetch('/api/webauthn-register-verify', {
+  const res = await fetch('/api/webauthn-register', {
     method: 'POST',
     headers,
     body: JSON.stringify({ response, deviceName }),
@@ -228,7 +228,7 @@ export async function verifyWebAuthnRegistration(
 }
 
 export async function getWebAuthnLoginOptions(): Promise<{ options: unknown; challengeId: string }> {
-  const res = await fetch('/api/webauthn-login-options', { method: 'POST' })
+  const res = await fetch('/api/webauthn-login', { method: 'GET' })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`API error ${res.status}: ${text}`)
@@ -238,7 +238,7 @@ export async function getWebAuthnLoginOptions(): Promise<{ options: unknown; cha
 
 export async function verifyWebAuthnLogin(challengeId: string, response: unknown): Promise<AuthUser> {
   const result = await apiFetch(
-    '/api/webauthn-login-verify',
+    '/api/webauthn-login',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -283,8 +283,8 @@ export async function validateMagicToken(token: string): Promise<{ employeeName:
 }
 
 export async function completeDeviceRegistration(token: string): Promise<void> {
-  const res = await fetch('/api/webauthn-magic-link-complete', {
-    method: 'POST',
+  const res = await fetch('/api/webauthn-magic-link', {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
   })
