@@ -8,8 +8,9 @@ import { requireAuth } from './_auth.js'
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const BodySchema = z.object({
-  year:  z.number().int().min(2000).max(2100),
-  month: z.number().int().min(1).max(12),
+  year:       z.number().int().min(2000).max(2100),
+  month:      z.number().int().min(1).max(12),
+  recipients: z.array(z.string().email()).min(1),
 })
 
 const EntryDocSchema = z.object({
@@ -148,7 +149,7 @@ function buildHtml(
 
 // ── Core send logic ───────────────────────────────────────────────────────────
 
-async function sendSummary(year: number, month: number, res: VercelResponse): Promise<void> {
+async function sendSummary(year: number, month: number, res: VercelResponse, explicitRecipients?: string[]): Promise<void> {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
     res.status(500).json({ error: 'SMTP environment variables not configured' })
@@ -177,7 +178,7 @@ async function sendSummary(year: number, month: number, res: VercelResponse): Pr
     entriesByEmployee.get(key)!.push(e)
   }
 
-  const recipients = employeeDocs
+  const recipients = explicitRecipients ?? employeeDocs
     .filter((e): e is EmployeeDoc & { email: string } => e.isAdmin && e.email != null && e.email.length > 0)
     .map(e => e.email)
 
@@ -246,7 +247,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return
     }
     try {
-      await sendSummary(parsed.data.year, parsed.data.month, res)
+      await sendSummary(parsed.data.year, parsed.data.month, res, parsed.data.recipients)
     } catch {
       res.status(500).json({ error: 'Failed to send summary email' })
     }

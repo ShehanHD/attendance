@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Download, Mail, ArrowLeft } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -10,6 +11,9 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useQuery } from '@tanstack/react-query'
 import { useEmployees } from '@/hooks/useEmployees'
 import { useAuth } from '@/contexts/AuthContext'
@@ -33,6 +37,9 @@ export default function Summary() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(currentYear)
   const [isSending, setIsSending] = useState(false)
+  const [sendDialogOpen, setSendDialogOpen] = useState(false)
+  const [recipientInput, setRecipientInput] = useState('')
+  const [copyToMe, setCopyToMe] = useState(false)
 
   const { data: employees, isLoading: empLoading, isError: empError } = useEmployees()
 
@@ -64,7 +71,25 @@ export default function Summary() {
   const isLoading = empLoading || entriesLoading
   const isError = empError || entriesError
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  function parseRecipients(): string[] {
+    const lines = recipientInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
+    if (copyToMe && user!.email) {
+      const lower = user!.email.toLowerCase()
+      if (!lines.map(e => e.toLowerCase()).includes(lower)) lines.push(user!.email)
+    }
+    return [...new Set(lines)]
+  }
+
+  function recipientsValid(): boolean {
+    const list = parseRecipients()
+    return list.length > 0 && list.every(e => emailRegex.test(e))
+  }
+
   async function handleSendEmail() {
+    const recipients = parseRecipients()
+    setSendDialogOpen(false)
     setIsSending(true)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30_000)
@@ -72,20 +97,16 @@ export default function Summary() {
       const res = await fetch('/api/send-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, month }),
+        body: JSON.stringify({ year, month, recipients }),
         signal: controller.signal,
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string }
-        toast.error((data.error) ?? 'Failed to send summary email')
+        toast.error(data.error ?? 'Failed to send summary email')
         return
       }
       const data = await res.json() as { sent: number }
-      toast.success(
-        data.sent === 0
-          ? 'No admin recipients found'
-          : `Summary email sent to ${data.sent} admin${data.sent > 1 ? 's' : ''}`
-      )
+      toast.success(`Summary email sent to ${data.sent} recipient${data.sent !== 1 ? 's' : ''}`)
     } catch {
       toast.error('Failed to send summary email')
     } finally {
@@ -125,17 +146,17 @@ export default function Summary() {
             disabled={!allEntries || allEntries.length === 0}
             onClick={() => exportSummaryToExcel(visibleEmployees, allEntries ?? [], month, year)}
           >
-            Download Excel
+            <Download className='h-4 w-4' />Download Excel
           </Button>
           <Button
             variant='outline'
             disabled={isSending}
-            onClick={handleSendEmail}
+            onClick={() => { setRecipientInput(''); setCopyToMe(false); setSendDialogOpen(true) }}
           >
-            {isSending ? 'Sending…' : 'Send Summary Email'}
+            <Mail className='h-4 w-4' />{isSending ? 'Sending…' : 'Send Summary by Email'}
           </Button>
           <Button variant='outline' onClick={() => navigate('/attendance')}>
-            Back
+            <ArrowLeft className='h-4 w-4' />Back
           </Button>
         </div>
       </header>
@@ -169,6 +190,40 @@ export default function Summary() {
           <SummaryTable employees={visibleEmployees} allEntries={allEntries ?? []} />
         </div>
       </main>
+
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent className='max-w-sm'>
+          <DialogHeader>
+            <DialogTitle>Send Summary by Email</DialogTitle>
+          </DialogHeader>
+          <div className='space-y-4 py-1'>
+            <div className='space-y-1.5'>
+              <Label htmlFor='recipients'>Recipients</Label>
+              <textarea
+                id='recipients'
+                className='w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none'
+                rows={4}
+                placeholder={'email@example.com\nanother@example.com'}
+                value={recipientInput}
+                onChange={e => setRecipientInput(e.target.value)}
+              />
+              <p className='text-xs text-muted-foreground'>One email per line, or comma-separated.</p>
+            </div>
+            {user.email && (
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='copy-to-me' className='cursor-pointer'>Send me a copy</Label>
+                <Switch id='copy-to-me' checked={copyToMe} onCheckedChange={setCopyToMe} />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setSendDialogOpen(false)}>Cancel</Button>
+            <Button disabled={!recipientsValid()} onClick={handleSendEmail}>
+              <Mail className='h-4 w-4' />Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

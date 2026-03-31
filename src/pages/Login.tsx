@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { LogIn, Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -80,8 +81,8 @@ export default function Login() {
               required
             />
           </div>
-          <Button type='submit' className='w-full' disabled={isSubmitting}>
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
+          <Button type='submit' className='w-full gap-2' disabled={isSubmitting}>
+            <LogIn className='h-4 w-4' />{isSubmitting ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
 
@@ -102,7 +103,7 @@ export default function Login() {
               disabled={isBiometric}
               onClick={handleBiometricLogin}
             >
-              {isBiometric ? 'Waiting for biometric…' : 'Use biometric / passkey'}
+              <Fingerprint className='h-4 w-4' />{isBiometric ? 'Waiting for biometric…' : 'Use biometric / passkey'}
             </Button>
           </>
         )}

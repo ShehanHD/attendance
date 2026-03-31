@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Menu, User } from 'lucide-react'
+import { Menu, User, BarChart2, Settings2, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -141,19 +141,19 @@ export default function Attendance() {
           {/* Desktop nav buttons */}
           {user.isAdmin && (
             <>
-              <Button variant='outline' className='hidden sm:flex' onClick={() => guardedAction(() => navigate('/summary'))}>
-                Summary
+              <Button variant='outline' className='hidden sm:flex gap-1.5' onClick={() => guardedAction(() => navigate('/summary'))}>
+                <BarChart2 className='h-4 w-4' />Summary
               </Button>
-              <Button variant='outline' className='hidden sm:flex' onClick={() => guardedAction(() => navigate('/employees'))}>
-                Settings
+              <Button variant='outline' className='hidden sm:flex gap-1.5' onClick={() => guardedAction(() => navigate('/employees'))}>
+                <Settings2 className='h-4 w-4' />Settings
               </Button>
             </>
           )}
           <Button variant='outline' className='hidden sm:flex gap-1.5' onClick={() => setProfileOpen(true)}>
             <User className='h-4 w-4' />{user.name}
           </Button>
-          <Button variant='outline' className='hidden sm:flex' onClick={handleLogout}>
-            Sign out
+          <Button variant='outline' className='hidden sm:flex gap-1.5' onClick={handleLogout}>
+            <LogOut className='h-4 w-4' />Sign out
           </Button>
 
           {/* Mobile: single hamburger menu */}
@@ -171,16 +171,16 @@ export default function Attendance() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => guardedAction(() => navigate('/summary'))}>
-                    Summary
+                    <BarChart2 className='h-4 w-4 mr-2' />Summary
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => guardedAction(() => navigate('/employees'))}>
-                    Settings
+                    <Settings2 className='h-4 w-4 mr-2' />Settings
                   </DropdownMenuItem>
                 </>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className='text-destructive focus:text-destructive' onClick={handleLogout}>
-                Sign out
+                <LogOut className='h-4 w-4 mr-2' />Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

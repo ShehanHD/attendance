@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {Navigate, useNavigate} from 'react-router-dom'
 import {toast} from 'sonner'
+import { ArrowLeft, UserPlus, Pencil, KeyRound, UserCheck, UserX, Trash2, Plus, Users, CalendarOff, RefreshCw, Copy, Check } from 'lucide-react'
 import {useAuth} from '@/contexts/AuthContext'
 import {setEmployeeCredentials} from '@/lib/mongoApi'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table'
@@ -144,22 +145,22 @@ export default function Employees() {
     <div className='min-h-screen bg-gray-50'>
       <header className='bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shadow-sm'>
         <h1 className='text-lg sm:text-xl font-semibold'>Settings</h1>
-        <Button variant='outline' onClick={() => navigate('/attendance')}>Back</Button>
+        <Button variant='outline' className='gap-1.5' onClick={() => navigate('/attendance')}><ArrowLeft className='h-4 w-4' />Back</Button>
       </header>
 
       <main className='p-4 sm:p-6'>
         <div className='bg-white rounded-2xl shadow-sm p-4 sm:p-6'>
           <Tabs defaultValue='employees'>
             <TabsList className='mb-6'>
-              <TabsTrigger value='employees'>Employees</TabsTrigger>
-              <TabsTrigger value='holidays'>Holidays</TabsTrigger>
+              <TabsTrigger value='employees' className='gap-1.5'><Users className='h-4 w-4' />Employees</TabsTrigger>
+              <TabsTrigger value='holidays' className='gap-1.5'><CalendarOff className='h-4 w-4' />Holidays</TabsTrigger>
             </TabsList>
 
             {/* ── Employees tab ── */}
             <TabsContent value='employees'>
               <div className='flex justify-end mb-4'>
-                <Button onClick={() => { setEditTarget(null); setModalOpen(true) }}>
-                  Add Employee
+                <Button className='gap-1.5' onClick={() => { setEditTarget(null); setModalOpen(true) }}>
+                  <UserPlus className='h-4 w-4' />Add Employee
                 </Button>
               </div>
               <div className='overflow-x-auto'>
@@ -191,26 +192,27 @@ export default function Employees() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button size='sm' variant='ghost' onClick={() => handleOpenCredentials(emp)}>
-                            Set login
+                          <Button size='sm' variant='ghost' className='gap-1.5' onClick={() => handleOpenCredentials(emp)}>
+                            <KeyRound className='h-3.5 w-3.5' />Set login
                           </Button>
                         </TableCell>
                         <TableCell>
                           <div className='flex gap-2'>
-                            <Button size='sm' variant='outline' onClick={() => handleEdit(emp)}>Edit</Button>
+                            <Button size='sm' variant='outline' className='gap-1.5' onClick={() => handleEdit(emp)}><Pencil className='h-3.5 w-3.5' />Edit</Button>
                             {isInactive ? (
-                              <Button size='sm' variant='outline' onClick={() => setReactivateTarget(emp)}>
-                                Activate
+                              <Button size='sm' variant='outline' className='gap-1.5' onClick={() => setReactivateTarget(emp)}>
+                                <UserCheck className='h-3.5 w-3.5' />Activate
                               </Button>
                             ) : (
                               <Button
                                 size='sm'
                                 variant='destructive'
+                                className='gap-1.5'
                                 onClick={() => setDeactivateTarget(emp)}
                                 disabled={emp._id === sessionId}
                                 title={emp._id === sessionId ? 'Cannot deactivate your own account' : undefined}
                               >
-                                Deactivate
+                                <UserX className='h-3.5 w-3.5' />Deactivate
                               </Button>
                             )}
                           </div>
@@ -254,8 +256,8 @@ export default function Employees() {
                       <TableCell className='text-muted-foreground'>{c.endDate ?? '—'}</TableCell>
                       <TableCell className='text-muted-foreground'>{c.note ?? '—'}</TableCell>
                       <TableCell>
-                        <Button size='sm' variant='destructive' onClick={() => deleteClosure(c._id)}>
-                          Remove
+                        <Button size='sm' variant='destructive' className='gap-1.5' onClick={() => deleteClosure(c._id)}>
+                          <Trash2 className='h-3.5 w-3.5' />Remove
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -271,7 +273,7 @@ export default function Employees() {
                       <Input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder='Note (optional)' className='w-48' />
                     </TableCell>
                     <TableCell>
-                      <Button size='sm' onClick={handleAddClosure} disabled={!newDate || createPending}>Add</Button>
+                      <Button size='sm' className='gap-1.5' onClick={handleAddClosure} disabled={!newDate || createPending}><Plus className='h-3.5 w-3.5' />Add</Button>
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -312,7 +314,7 @@ export default function Employees() {
                   className='h-auto py-0 text-xs text-muted-foreground hover:text-foreground'
                   onClick={handleGeneratePassword}
                 >
-                  Generate
+                  <RefreshCw className='h-3 w-3 mr-1' />Generate
                 </Button>
               </div>
               <div className='flex gap-2'>
@@ -333,7 +335,7 @@ export default function Employees() {
                     className='shrink-0'
                     onClick={handleCopyPassword}
                   >
-                    {credCopied ? 'Copied!' : 'Copy'}
+                    {credCopied ? <><Check className='h-3.5 w-3.5 mr-1' />Copied!</> : <><Copy className='h-3.5 w-3.5 mr-1' />Copy</>}
                   </Button>
                 )}
               </div>

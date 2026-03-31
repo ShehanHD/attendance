@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { KeyRound, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,8 +44,8 @@ export default function ChangePassword() {
         <div className='space-y-1 text-center'>
           <h1 className='text-2xl font-semibold tracking-tight'>Change Password</h1>
           {mustChange && (
-            <p className='text-sm text-orange-600 font-medium'>
-              You must set a new password before continuing.
+            <p className='text-sm text-orange-600 font-medium flex items-center justify-center gap-1.5'>
+              <AlertTriangle className='h-4 w-4 shrink-0' />You must set a new password before continuing.
             </p>
           )}
         </div>
@@ -87,8 +88,8 @@ export default function ChangePassword() {
               required
             />
           </div>
-          <Button type='submit' className='w-full' disabled={saving}>
-            {saving ? 'Saving…' : 'Change Password'}
+          <Button type='submit' className='w-full gap-2' disabled={saving}>
+            <KeyRound className='h-4 w-4' />{saving ? 'Saving…' : 'Change Password'}
           </Button>
         </form>
       </div>
