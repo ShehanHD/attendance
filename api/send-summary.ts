@@ -164,7 +164,7 @@ function buildMjmlHtml(
 
     <mj-section background-color="#ffffff" padding="0">
       <mj-column padding="0">
-        <mj-table font-size="13px" color="#111111" cell-padding="0">
+        <mj-table font-size="13px" color="#111111">
           <tr style="background-color:#f0f4f8">
             <th style="${thStyle};text-align:left">Employee</th>
             <th style="${thStyle};text-align:right">Hours</th>
