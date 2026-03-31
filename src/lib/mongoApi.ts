@@ -201,7 +201,7 @@ export async function setEmployeeCredentials(
 
 export async function getWebAuthnRegisterOptions(magicToken?: string): Promise<unknown> {
   const headers: Record<string, string> = {}
-  if (magicToken) headers['X-Magic-Token'] = magicToken
+  if (magicToken) headers['x-magic-token'] = magicToken
   const res = await fetch('/api/webauthn-register-options', { method: 'GET', headers })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
@@ -216,7 +216,7 @@ export async function verifyWebAuthnRegistration(
   magicToken?: string
 ): Promise<void> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (magicToken) headers['X-Magic-Token'] = magicToken
+  if (magicToken) headers['x-magic-token'] = magicToken
   const res = await fetch('/api/webauthn-register-verify', {
     method: 'POST',
     headers,
