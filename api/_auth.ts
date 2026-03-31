@@ -62,8 +62,10 @@ export async function requireAuth(
   }
 }
 
+const MAGIC_TOKEN_PURPOSE = 'device-registration' as const
+
 export async function signMagicToken(employeeId: string): Promise<string> {
-  return new SignJWT({ purpose: 'device-registration' })
+  return new SignJWT({ purpose: MAGIC_TOKEN_PURPOSE })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(employeeId)
     .setIssuedAt()
@@ -72,8 +74,9 @@ export async function signMagicToken(employeeId: string): Promise<string> {
 }
 
 export async function verifyMagicToken(token: string): Promise<{ employeeId: string }> {
+  // jose's jwtVerify rejects expired tokens automatically — no explicit exp check needed
   const { payload } = await jwtVerify(token, getSecret())
-  if (payload.purpose !== 'device-registration') {
+  if (payload.purpose !== MAGIC_TOKEN_PURPOSE) {
     throw new Error('Invalid magic token: wrong purpose')
   }
   if (typeof payload.sub !== 'string') {
@@ -84,10 +87,11 @@ export async function verifyMagicToken(token: string): Promise<{ employeeId: str
 
 // Resolves caller identity from either a session cookie or an x-magic-token header.
 // Cookie takes precedence when both are present.
+// A valid cookie suppresses magic-token evaluation entirely — intentional.
 export async function resolveAuth(
   req: VercelRequest,
   res: VercelResponse
-): Promise<{ employeeId: string; isAdmin: boolean } | null> {
+): Promise<AuthPayload | null> {
   const cookieToken = req.cookies?.[COOKIE_NAME]
   if (cookieToken) {
     try {
